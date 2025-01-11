@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "UObject/Interface.h"
-#include "DataTables/EquipmentData.h"
 #include "PickupInterface.generated.h"
 
 // This class does not need to be modified.
@@ -25,9 +24,6 @@ public:
 	
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	bool PickupWeapon(FWeaponData NewWeapon);
-	
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	bool PickupEquipment(FEquipmentData Equipment);
 	
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	bool PickupConsumable(const EConsumableEffect ConsumableEffect, const int32 ConsumableAmount);

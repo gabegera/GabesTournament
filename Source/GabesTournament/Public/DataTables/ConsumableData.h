@@ -19,7 +19,7 @@ struct GABESTOURNAMENT_API FConsumableData: public FTableRowBase
 
 	bool operator==(const FWeaponData &Other) const
 	{
-		if (ConsumableName == Other.Name) return true;
+		if (ConsumableName == Other.DisplayName) return true;
 		return false;
 	}
 

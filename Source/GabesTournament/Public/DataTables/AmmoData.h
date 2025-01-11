@@ -11,7 +11,7 @@ struct GABESTOURNAMENT_API FAmmoData: public FTableRowBase
 
 	bool operator==(const FWeaponData &Other) const
 	{
-		if (AmmoName == Other.Name) return true;
+		if (AmmoName == Other.DisplayName) return true;
 		return false;
 	}
 
@@ -34,7 +34,7 @@ struct GABESTOURNAMENT_API FAmmoData: public FTableRowBase
 	FColor PickupOutlineColor = FColor::Black;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	EAmmoType AmmoType = EAmmoType::EnergyAmmo;
+	EAmmoType AmmoType = EAmmoType::AssaultRifleBullets;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	int32 PickupAmount = 20;
