@@ -25,9 +25,6 @@ AShooterPlayerCharacter::AShooterPlayerCharacter()
 
 	GetMesh()->AttachToComponent(CameraComponent, FAttachmentTransformRules::KeepRelativeTransform);
 
-	WeaponChildComponent = CreateDefaultSubobject<UChildActorComponent>(TEXT("WeaponChild"));
-	WeaponChildComponent->SetupAttachment(GetMesh());
-
 	InventoryComponent = CreateDefaultSubobject<UInventoryComponent>(TEXT("InventoryComponent"));
 
 }

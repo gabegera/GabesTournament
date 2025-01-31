@@ -25,6 +25,7 @@ enum class EProjectileType : uint8
 {
 	Hitscan = 0 UMETA(DisplayName = "Hitscan"),
 	Projectile = 1 UMETA(DisplayName = "Projectile"),
+	Custom = 2 UMETA(DisplayName = "Custom"),
 };
 
 UENUM(BlueprintType)

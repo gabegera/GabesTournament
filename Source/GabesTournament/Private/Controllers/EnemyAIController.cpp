@@ -138,7 +138,7 @@ AEnemyCharacter* ABaseEnemyAIController::GetEnemyCharacter()
 
 float ABaseEnemyAIController::GetShotSpreadInDegrees()
 {
-	return GetEquippedWeapon().HipfireSpreadInDegrees;
+	return GetEquippedWeapon().WeaponSpreadInDegrees;
 }
 
 FWeaponData ABaseEnemyAIController::GetEquippedWeapon()

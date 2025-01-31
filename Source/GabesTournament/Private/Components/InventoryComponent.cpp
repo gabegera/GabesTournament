@@ -46,11 +46,7 @@ void UInventoryComponent::PostEditChangeProperty(struct FPropertyChangedEvent& P
 		{
 			OwnedWeapons.Add(*WeaponDataTableRows[i]);
 
-			AddAmmo(WeaponDataTableRows[i]->PrimaryAmmoType, WeaponDataTableRows[i]->PrimaryStartingAmmo);
-			if (WeaponDataTableRows[i]->PrimaryAmmoType != WeaponDataTableRows[i]->SecondaryAmmoType)
-			{
-				AddAmmo(WeaponDataTableRows[i]->SecondaryAmmoType, WeaponDataTableRows[i]->SecondaryStartingAmmo);
-			}
+			AddAmmo(WeaponDataTableRows[i]->AmmoType, WeaponDataTableRows[i]->StartingAmmoAmount);
 		}
 	}
 }

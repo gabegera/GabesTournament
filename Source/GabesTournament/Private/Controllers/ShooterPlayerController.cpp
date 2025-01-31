@@ -163,7 +163,7 @@ void AShooterPlayerController::Shoot()
 
 float AShooterPlayerController::GetShotSpreadInDegrees()
 {
-	if (float Spread = GetEquippedWeapon().HipfireSpreadInDegrees)
+	if (float Spread = GetEquippedWeapon().WeaponSpreadInDegrees)
 	{
 		// if (IsAiming())
 		// {
