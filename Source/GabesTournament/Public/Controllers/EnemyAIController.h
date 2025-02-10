@@ -68,7 +68,7 @@ public:
 	// EAmmoType GetAmmoType() { return GetEquippedWeapon().AmmoType; }
 
 	UFUNCTION(BlueprintCallable, BlueprintPure)
-	TSoftClassPtr<AProjectileActor> GetProjectileActor() { return GetEquippedWeapon().ProjectileActor; }
+	TSoftObjectPtr<AProjectileActor> GetProjectileActor() { return GetEquippedWeapon().ProjectileActor; }
 
 	UFUNCTION(BlueprintCallable, BlueprintPure)
 	EProjectileType GetProjectileType() { return GetEquippedWeapon().ProjectileType; }

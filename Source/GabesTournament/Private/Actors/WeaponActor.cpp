@@ -2,6 +2,7 @@
 
 
 #include "Actors/WeaponActor.h"
+#include "Actors/ProjectileActor.h"
 
 
 // Sets default values
@@ -68,9 +69,37 @@ void AWeaponActor::Shoot(FVector StartingPosition, FVector Target, float SpreadI
 	// AddRecoil(GetHipfireRecoil());
 }
 
+void AWeaponActor::Shoot(FVector StartingPosition, FVector Target, FWeaponData WeaponData)
+{
+	if (CanShoot() == false) return;
+ 
+	// Shoots for every pellet the weapon has. Will only fire once if weapon is not a shotgun.
+	for (int i = 0; i < GetWeaponData().ShotgunProjectileCount; i++)
+	{
+		if (WeaponData.ProjectileActor)
+		{
+			AProjectileActor* LoadedProjectile = WeaponData.ProjectileActor.LoadSynchronous();
+			ShootProjectile(LoadedProjectile, StartingPosition, Target, WeaponData.WeaponSpreadInDegrees, WeaponData.Damage);
+		}
+		else
+		{
+			ShootHitscan(StartingPosition, Target, WeaponData.WeaponSpreadInDegrees, WeaponData.Damage);
+		}
+ 
+		// If the Weapon is not a shotgun break the loop.
+		if (GetWeaponData().IsShotgun == false) break;
+	}
+
+	GetWorldTimerManager().SetTimer(FireRateTimer, GetWeaponData().FireRate, false);
+}
+
 void AWeaponActor::ShootHitscan(FVector StartingPosition, FVector Target, float SpreadInDegrees, float Damage)
 {
-	
+	FHitResult Hit;
+	GetWorld()->LineTraceSingleByChannel(Hit, StartingPosition, Target, ECC_WorldDynamic);
+	DrawDebugLine(GetWorld(), StartingPosition, Target, FColor::Red, false, 0.25, 0, 1.0f);
+
+	Hit.GetActor()->TakeDamage(Damage, FDamageEvent(), GetParentActor()->GetInstigatorController(), GetParentActor());
 }
 
 void AWeaponActor::ShootProjectile(AProjectileActor* ProjectileActor, FVector StartingPosition, FVector Target, float SpreadInDegrees, float Damage)

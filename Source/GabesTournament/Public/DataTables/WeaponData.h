@@ -9,15 +9,15 @@ class AProjectileActor;
 UENUM(BlueprintType)
 enum class EWeaponSlot : uint8
 {
-	Slot0 = 0 UMETA(DisplayName = "Slot 0"),
-	Slot1 = 1 UMETA(DisplayName = "Slot 1"),
-	Slot2 = 2 UMETA(DisplayName = "Slot 2"),
-	Slot3 = 3 UMETA(DisplayName = "Slot 3"),
-	Slot4 = 4 UMETA(DisplayName = "Slot 4"),
-	Slot5 = 5 UMETA(DisplayName = "Slot 5"),
-	Slot6 = 6 UMETA(DisplayName = "Slot 6"),
-	Slot7 = 7 UMETA(DisplayName = "Slot 7"),
-	Slot8 = 8 UMETA(DisplayName = "Slot 8")
+	Slot1 = 0 UMETA(DisplayName = "Slot 1"),
+	Slot2 = 1 UMETA(DisplayName = "Slot 2"),
+	Slot3 = 2 UMETA(DisplayName = "Slot 3"),
+	Slot4 = 3 UMETA(DisplayName = "Slot 4"),
+	Slot5 = 4 UMETA(DisplayName = "Slot 5"),
+	Slot6 = 5 UMETA(DisplayName = "Slot 6"),
+	Slot7 = 6 UMETA(DisplayName = "Slot 7"),
+	Slot8 = 7 UMETA(DisplayName = "Slot 8"),
+	Slot9 = 8 UMETA(DisplayName = "Slot 9")
 };
 
 UENUM(BlueprintType)
@@ -75,7 +75,10 @@ struct GABESTOURNAMENT_API FWeaponData: public FTableRowBase
 	FName DisplayName = NAME_None;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Metadata")
-	EWeaponSlot WeaponSlot = EWeaponSlot::Slot0;
+	TSoftClassPtr<AWeaponActor> WeaponActor;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Metadata")
+	EWeaponSlot WeaponSlot = EWeaponSlot::Slot1;
 
 	// ------ PROJECTILE VARIABLES ------
 
@@ -84,7 +87,7 @@ struct GABESTOURNAMENT_API FWeaponData: public FTableRowBase
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Projectiles / Ammo",
 	meta=(EditCondition = "ProjectileType == EProjectileType::Projectile", EditConditionHides))
-	TSoftClassPtr<AProjectileActor> ProjectileActor;
+	TSoftObjectPtr<AProjectileActor> ProjectileActor;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Projectiles / Ammo")
 	EAmmoType AmmoType = EAmmoType::AssaultRifleBullets;

@@ -169,16 +169,16 @@ APickupActor* AShooterCharacter::FindClosestPickup()
 
 void AShooterCharacter::EquipWeapon(const EWeaponSlot WeaponSlot)
 {
-	// for (int32 i = 0; i < InventoryComponent->GetOwnedWeapons().Num(); i++)
-	// {
-	// 	FWeaponData NewWeapon;
-	// 	if (InventoryComponent->GetOwnedWeapons()[i].WeaponSlot == WeaponSlot) NewWeapon = InventoryComponent->GetOwnedWeapons()[i];
-	// 	if (NewWeapon == EquippedWeapon) continue;
-	// 	if (NewWeapon.IsNull()) return;
-	// 	EquippedWeapon = NewWeapon;
-	// }
-	//
-	// WeaponChildComponent->SetChildActorClass(EquippedWeapon.WeaponActor);
+	for (int32 i = 0; i < InventoryComponent->GetOwnedWeapons().Num(); i++)
+	{
+		FWeaponData NewWeapon;
+		if (InventoryComponent->GetOwnedWeapons()[i].WeaponSlot == WeaponSlot) NewWeapon = InventoryComponent->GetOwnedWeapons()[i];
+		if (NewWeapon == EquippedWeapon) continue;
+		if (NewWeapon.IsNull()) return;
+		EquippedWeapon = NewWeapon;
+	}
+	
+	WeaponChildComponent->SetChildActorClass(EquippedWeapon.WeaponActor.LoadSynchronous());
 }
 
 // void AShooterCharacter::ShootHitscan(float WeaponSpreadInDegrees, const FVector ShotOrigin, FVector ShotTarget, float Damage)

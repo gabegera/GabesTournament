@@ -46,6 +46,8 @@ public:
 	UFUNCTION(BlueprintCallable)
 	virtual void Shoot(FVector StartingPosition, FVector Target, float SpreadInDegrees, float Damage, float Range, EAmmoType AmmoType, AProjectileActor* ProjectileActor = nullptr);
 
+	virtual void Shoot(FVector StartingPosition, FVector Target, FWeaponData WeaponData);
+
 	UFUNCTION(BlueprintCallable)
 	void ShootHitscan(FVector StartingPosition, FVector Target, float SpreadInDegrees, float Damage);
 
@@ -61,4 +63,7 @@ public:
 	// ------ GETTERS ------
 	UFUNCTION(BlueprintCallable, BlueprintPure)
 	FWeaponData GetWeaponData() { return *WeaponDataTableRow.GetRow<FWeaponData>(""); }
+
+	UFUNCTION(BlueprintCallable, BlueprintPure)
+	USkinnedAsset* GetSkeletalMesh() { return SkeletalMeshComponent->GetSkinnedAsset(); }
 };

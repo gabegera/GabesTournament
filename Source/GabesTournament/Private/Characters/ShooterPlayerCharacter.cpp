@@ -52,7 +52,7 @@ void AShooterPlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (IsValid(WeaponChildComponent) && IsValid(WeaponChildComponent->GetChildActor()->GetComponentByClass<USkeletalMeshComponent>()))
+	if (WeaponChildComponent->GetChildActor() != nullptr && WeaponChildComponent->GetChildActor()->GetComponentByClass<USkeletalMeshComponent>() != nullptr)
 	{
 		WeaponChildMesh = WeaponChildComponent->GetChildActor()->GetComponentByClass<USkeletalMeshComponent>();
 	}
