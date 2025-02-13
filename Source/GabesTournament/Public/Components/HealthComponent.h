@@ -1,41 +1,39 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Components/ActorComponent.h"
+#include "UObject/Object.h"
 #include "HealthComponent.generated.h"
 
-UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
-class GABESTOURNAMENT_API UHealthComponent : public UActorComponent
+UCLASS()
+class GABESTOURNAMENT_API UHealthComponent : public UObject
 {
 	GENERATED_BODY()
 
-public:	
-	// Sets default values for this component's properties
-	UHealthComponent();
-
-	void TakeDamage(float Damage);
-
-	void AddHealth(float Health);
-
-	UFUNCTION()
-	float GetHealth() { return CurrentHealth; }
-
 protected:
-	// Called when the game starts
-	virtual void BeginPlay() override;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	
+	UPROPERTY(EditDefaultsOnly)
 	float MaxHealth = 100.0f;
+	
+	UPROPERTY()
+	float Health = MaxHealth;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	float CurrentHealth = 0.0f;
+public:
 
+	UFUNCTION(BlueprintCallable)
 
-public:	
-	// Called every frame
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+	void TakeDamage(const float DamageAmount);
 
+	void AddHealth(const float HealthAmount) { Health += HealthAmount; }
+
+	// ------ GETTERS ------
+
+	UFUNCTION(BlueprintCallable, BlueprintPure)
+	float GetMaxHealth() { return MaxHealth; }
+
+	UFUNCTION(BlueprintCallable, BlueprintPure)
+	float GetHealth() { return Health; }
+	
 	
 };

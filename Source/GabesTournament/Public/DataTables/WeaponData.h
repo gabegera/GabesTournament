@@ -1,10 +1,8 @@
 ﻿#pragma once
 
 #include "CoreMinimal.h"
+#include "Actors/Weapons/WeaponActor.h"
 #include "WeaponData.generated.h"
-
-class AWeaponActor;
-class AProjectileActor;
 
 UENUM(BlueprintType)
 enum class EWeaponSlot : uint8
@@ -49,81 +47,9 @@ struct GABESTOURNAMENT_API FWeaponData: public FTableRowBase
 {
 	GENERATED_BODY()
 
-	bool operator==(const FWeaponData &Other) const
-	{
-		return
-		(
-			DisplayName == Other.DisplayName &&
-			AmmoType == Other.AmmoType &&
-			ProjectileType == Other.ProjectileType &&
-			WeaponSlot == Other.WeaponSlot
-		);
-	}
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TSubclassOf<AWeaponActor> WeaponActor;
 
-	bool IsNull() const
-	{
-		if (DisplayName.IsNone())
-		{
-			return true;
-		}
-		return false;
-	}
-
-	// ------ METADATA ------
-	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Metadata")
-	FName DisplayName = NAME_None;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Metadata")
-	TSoftClassPtr<AWeaponActor> WeaponActor;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Metadata")
-	EWeaponSlot WeaponSlot = EWeaponSlot::Slot1;
-
-	// ------ PROJECTILE VARIABLES ------
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Projectiles / Ammo")
-	EProjectileType ProjectileType = EProjectileType::Hitscan;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Projectiles / Ammo",
-	meta=(EditCondition = "ProjectileType == EProjectileType::Projectile", EditConditionHides))
-	TSoftObjectPtr<AProjectileActor> ProjectileActor;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Projectiles / Ammo")
-	EAmmoType AmmoType = EAmmoType::AssaultRifleBullets;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Projectiles / Ammo")
-	int32 StartingAmmoAmount = 20;
-
-	// ------ SHOOTING VARIABLES ------
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Shooting Variables")
-	float Damage = 10.0f;
-
-	// FireRate in Rounds Per Minute (RPM)
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Shooting Variables")
-	float FireRate = 1.0f;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Shooting Variables")
-	float Range = 10000.0f;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Shooting Variables")
-	float WeaponSpreadInDegrees = 0.0f;
-
-	// ------ SHOTGUN VARIABLES ------
-	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Shotgun Variables")
-	bool IsShotgun = false;
-
-	// How many projectiles are spawned when shooting a shotgun.
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Shotgun Variables",
-	meta=(EditCondition = "IsShotgun", EditConditionHides, ClampMin = 1, UIMin = 1))
-	int32 ShotgunProjectileCount = 8;
-
-	
+	// UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "WeaponActor != nullptr", EditConditionHides))
+	// float Damage = WeaponActor.GetDefaultObject()->Damage;
 };
-
-inline uint32 GetTypeHash(const FWeaponData& WeaponData)
-{
-	return FCrc::MemCrc32(&WeaponData, sizeof(WeaponData));
-}

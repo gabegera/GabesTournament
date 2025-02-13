@@ -2,378 +2,99 @@
 
 
 #include "Controllers/ShooterPlayerController.h"
-#include "Components/ExplosiveComponent.h"
-#include "Camera/CameraComponent.h"
-#include "Kismet/KismetMathLibrary.h"
 
+#include "GameFramework/PawnMovementComponent.h"
+
+AShooterPlayerController::AShooterPlayerController()
+{
+	PrimaryActorTick.bCanEverTick = true;
+}
+
+void AShooterPlayerController::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+{
+	UEnhancedInputComponent* Input = Cast<UEnhancedInputComponent>(PlayerInputComponent);
+	// You can bind to any of the trigger events here by changing the "ETriggerEvent" enum value
+	Input->BindAction(MoveInputAction, ETriggerEvent::Triggered, this, &AShooterPlayerController::Move);
+	Input->BindAction(LookInputAction, ETriggerEvent::Triggered, this, &AShooterPlayerController::Look);
+	Input->BindAction(JumpInputAction, ETriggerEvent::Triggered, this, &AShooterPlayerController::Jump);
+	Input->BindAction(DashInputAction, ETriggerEvent::Triggered, this, &AShooterPlayerController::Dash);
+}
 
 void AShooterPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
-	PlayerCharacter = GetPawn<AShooterPlayerCharacter>();
-
-	DefaultFOV = GetPlayerCharacter()->GetFirstPersonCameraComponent()->FieldOfView;
-
-	if (PlayerCharacter)
+	if (ULocalPlayer* LocalPlayer = Cast<ULocalPlayer>(Player))
 	{
-		PlayerInventoryComp = PlayerCharacter->GetComponentByClass<UInventoryComponent>();
-		PlayerHealthComp = PlayerCharacter->GetComponentByClass<UHealthComponent>();
-	}
+		if (UEnhancedInputLocalPlayerSubsystem* InputSystem = LocalPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>())
+		{
+			if (!InputMapping.IsNull())
+			{
+				InputSystem->AddMappingContext(InputMapping.LoadSynchronous(), 0);
+			}
+		}
 
-
-	// Get the Enhanced Input Local Player Subsystem from the Local Player related to our Player Controller.
-	if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
-	{
-		// PawnClientRestart can run more than once in an Actor's lifetime, so start by clearing out any leftover mappings.
-		Subsystem->ClearAllMappings();
-
-		// Add each mapping context, along with their priority values. Higher values out prioritize lower values.
-		Subsystem->AddMappingContext(DefaultMappingContext, 0);
+		SetupPlayerInputComponent(InputComponent);
 	}
 }
 
-void AShooterPlayerController::UseSpeedBoost()
+void AShooterPlayerController::Tick(float DeltaSeconds)
 {
-	UCharacterMovementComponent* MovementComponent = PlayerCharacter->GetCharacterMovement();
-	MovementComponent->MaxWalkSpeed *= SpeedBoostMultiplier;
-	MovementComponent->MaxWalkSpeedCrouched *= SpeedBoostMultiplier;
-}
+	Super::Tick(DeltaSeconds);
 
-void AShooterPlayerController::StopSpeedBoost()
-{
-	UCharacterMovementComponent* MovementComponent = PlayerCharacter->GetCharacterMovement();
-	MovementComponent->MaxWalkSpeed /= SpeedBoostMultiplier;
-	MovementComponent->MaxWalkSpeedCrouched /= SpeedBoostMultiplier;
-}
-
-void AShooterPlayerController::UseDamageBoost()
-{
-	IsDamageBoostActive = true;
-}
-
-void AShooterPlayerController::StopDamageBoost()
-{
-	IsDamageBoostActive = false;
-}
-
-void AShooterPlayerController::UseSlowTime()
-{
-	UGameplayStatics::SetGlobalTimeDilation(this, 1 / SlowTimeDivision);
-}
-
-void AShooterPlayerController::StopSlowTime() const
-{
-	UGameplayStatics::SetGlobalTimeDilation(this, 1);
-}
-
-void AShooterPlayerController::Move(float InputX, float InputY)
-{
-	if (!IsValid(PlayerCharacter)) return;
-
-	PlayerCharacter->AddMovementInput(PlayerCharacter->GetActorRightVector(), InputX);
-	PlayerCharacter->AddMovementInput(PlayerCharacter->GetActorForwardVector(), InputY);
-}
-
-
-void AShooterPlayerController::AddLookInput(FVector2D Input)
-{
-	// if (IsAiming()) Input *= MouseSensitivity / GetEquippedWeapon().ZoomMultiplier;
-	// else
-	Input *= MouseSensitivity;
-
-	if (RecoilCache != FVector2D::ZeroVector)
+	if (GetWorldTimerManager().IsTimerPaused(DashCooldownTimer) && GetCharacter()->GetMovementComponent()->IsFalling() == false)
 	{
-		RecoilCache.Y -= FMath::Abs(Input.Y);
-		if (RecoilCache.Y < 0) RecoilCache.Y = 0;
+		GetWorldTimerManager().UnPauseTimer(DashCooldownTimer);
 	}
+}
+
+// ------ MOVEMENT ------
+
+void AShooterPlayerController::Move(const FInputActionInstance& Instance)
+{
+	GetCharacter()->AddMovementInput(GetCharacter()->GetActorRightVector(), Instance.GetValue().Get<FVector2D>().X);
+	GetCharacter()->AddMovementInput(GetCharacter()->GetActorForwardVector(), Instance.GetValue().Get<FVector2D>().Y);
+}
+
+void AShooterPlayerController::Look(const FInputActionInstance& Instance)
+{
+	AddYawInput(Instance.GetValue().Get<FVector2D>().X * MouseLookSensitivity);
+	AddPitchInput(Instance.GetValue().Get<FVector2D>().Y * MouseLookSensitivity);
 	
-	if (GetWorldTimerManager().IsTimerActive(RecoilTimer) == false) RecoilCache = FVector2D::ZeroVector;
-	
-	AddYawInput(Input.X);
-	AddPitchInput(Input.Y);
 }
 
 void AShooterPlayerController::Jump()
 {
-	if (!IsValid(PlayerCharacter)) return;
-
-	PlayerCharacter->Jump();
+	if (GetCharacter()->GetVelocity().Z < 0 && GetCharacter()->GetMovementComponent()->IsFalling()) return; 
+	
+	GetCharacter()->Jump();
 }
 
-
-void AShooterPlayerController::Dash()
+void AShooterPlayerController::Dash(const FInputActionInstance& Instance)
 {
-	DashCooldownValue = DashCooldownLength;
-}
+	if (GetWorldTimerManager().IsTimerActive(DashCooldownTimer)) return;
+	
+	double XInput = Instance.GetValue().Get<FVector>().X;
+	double YInput = Instance.GetValue().Get<FVector>().Y;
+	double ZInput = Instance.GetValue().Get<FVector>().Z;
 
-bool AShooterPlayerController::CanFire()
-{
-	// if (InfiniteAmmo == false)
-	// {
-	// 	if (FireRate > 0 && GetEquippedWeaponAmmo() > 0) return false;
-	// }
-	// else
-	// {
-	// 	if (FireRate <= 0) return true;
-	// }
-
-	return false;
-}
-
-
-void AShooterPlayerController::Crouch()
-{
-	PlayerCharacter->Crouch();
-}
-
-
-void AShooterPlayerController::StopCrouch()
-{
-	PlayerCharacter->UnCrouch();
-}
-
-FWeaponData& AShooterPlayerController::GetEquippedWeapon() const
-{
-	return PlayerCharacter->EquippedWeapon;
-}
-
-// void AShooterPlayerController::ChargeShot(float MaxCharge)
-// {
-// 	// if (PlayerCharacter->InventoryComponent->GetAmmo(EAmmoType::EnergyAmmo) <= 0)
-// 	// {
-// 	// 	ResetWeapon();
-// 	// 	return;
-// 	// }
-// 	//
-// 	// if (CurrentWeaponCharge < MaxCharge)
-// 	// {
-// 	// 	CurrentWeaponCharge += GetWorld()->DeltaTimeSeconds;
-// 	// }
-// 	// else
-// 	// {
-// 	// 	CurrentWeaponCharge = MaxCharge;
-// 	// }
-// }
-
-void AShooterPlayerController::Shoot()
-{
-
-}
-
-float AShooterPlayerController::GetShotSpreadInDegrees()
-{
-	if (float Spread = GetEquippedWeapon().WeaponSpreadInDegrees)
+	// ZInput is used to check if the shift key was pressed. X and Y are the directions that the character will dash.
+	// The Character has to be moving in order to dash.
+	if (ZInput > 0 && (XInput != 0 || YInput != 0))
 	{
-		// if (IsAiming())
-		// {
-		// 	if (GetEquippedWeapon().AimingSpreadOverride) Spread = GetEquippedWeapon().AimingSpreadInDegrees;
-		// 	else Spread /= GetEquippedWeapon().ZoomMultiplier;
-		// }
+		if (GetCharacter()->GetMovementComponent()->IsFalling() == false)
+		{
+			FVector DashForce =  FVector::ZeroVector;
+			DashForce += GetCharacter()->GetActorRightVector() * XInput * DashLaunchForce.X;
+			DashForce += GetCharacter()->GetActorForwardVector() * YInput * DashLaunchForce.Y;
+			DashForce += GetCharacter()->GetActorUpVector() * DashLaunchForce.Z;
+
+			GetCharacter()->LaunchCharacter(DashForce, true, true);
+
+			GetWorldTimerManager().SetTimer(DashCooldownTimer, DashCooldown, false);
+			GetWorldTimerManager().PauseTimer(DashCooldownTimer); // Timer is waiting for the player to land on the ground again.
+		}
 		
-		
-		return Spread;
-	}
-	return 0;
-}
-
-// void AShooterPlayerController::Aim(float ZoomMultiplier)
-// {
-// 	if (IsAiming() || ZoomMultiplier == 0) return;
-//
-// 	GetPlayerCharacter()->GetFirstPersonCameraComponent()->SetFieldOfView(DefaultFOV / ZoomMultiplier);
-// }
-//
-// void AShooterPlayerController::StopAiming()
-// {
-// 	GetPlayerCharacter()->GetFirstPersonCameraComponent()->SetFieldOfView(DefaultFOV);
-// }
-//
-// bool AShooterPlayerController::IsAiming()
-// {
-// 	if (GetPlayerCharacter()->GetFirstPersonCameraComponent()->FieldOfView != DefaultFOV)
-// 	{
-// 		return true;
-// 	}
-// 	return false;
-// }
-
-void AShooterPlayerController::AddRecoil(FVector2D RecoilAmount)
-{
-	if (RecoilTarget == FVector2D::ZeroVector)
-	{
-		RecoilTarget = RecoilAmount;;
-	}
-	else
-	{
-		RecoilTarget += RecoilAmount;
-		RecoilProgress = FVector2D::ZeroVector;
-		RecoilCache = FVector2D::ZeroVector;
-	}
-
-	if (RecoilProgress != RecoilTarget)
-	{
-		GetWorldTimerManager().ClearTimer(RecoilTimer);
-		GetWorldTimerManager().SetTimer(RecoilTimer, this, &AShooterPlayerController::UpdateRecoil, 0.0001f, false);
-		UpdateRecoil();
 	}
 	
-	 //GEngine->AddOnScreenDebugMessage(4, 0.2f, FColor::Red, "Recoil Added: " + RecoilAmount.ToString());
-	
-}
-
-void AShooterPlayerController::UpdateRecoil()
-{
-	FVector2D DeltaRecoilProgress = FVector2D::ZeroVector;
-	
-	if (RecoilTarget != FVector2D::ZeroVector && RecoilProgress != RecoilTarget)
-	{
-		const FVector2D PreviousRecoilProgress = RecoilProgress;
-		RecoilProgress = FMath::Vector2DInterpTo(RecoilProgress, RecoilTarget, GetWorld()->DeltaTimeSeconds, RecoilInterpSpeed);
-		DeltaRecoilProgress = RecoilProgress - PreviousRecoilProgress;
-		
-		AddYawInput(DeltaRecoilProgress.X);
-		AddPitchInput(DeltaRecoilProgress.Y);
-		RecoilCache += DeltaRecoilProgress;
-
-		GetWorldTimerManager().SetTimer(RecoilTimer, this, &AShooterPlayerController::UpdateRecoil, 0.0001f, false);
-	}
-	else if (RecoilProgress == RecoilTarget)
-	{
-		RecoilTarget = FVector2D::ZeroVector;
-		RecoilProgress = FVector2D::ZeroVector;
-	}
-	
-	// GEngine->AddOnScreenDebugMessage(1, 0.2f, FColor::Yellow, "RecoilProgress = " + RecoilProgress.ToString());
-	// GEngine->AddOnScreenDebugMessage(2, 0.2f, FColor::Blue, "DeltaRecoilProgress = " + DeltaRecoilProgress.ToString());
-	// GEngine->AddOnScreenDebugMessage(3, 0.2f, FColor::Green, "RecoilTarget = " + RecoilTarget.ToString());
-}
-
-
-void AShooterPlayerController::ResetWeapon()
-{
-	FireRate = 0;
-	CurrentWeaponCharge = 0;
-	RecoilTarget = FVector2D::ZeroVector;
-	RecoilProgress = FVector2D::ZeroVector;
-
-	// GEngine->AddOnScreenDebugMessage(4, 0.2f, FColor::Yellow, "MouseRecoilTracker = " + MouseRecoilTracker.ToString());
-	// GEngine->AddOnScreenDebugMessage(5, 0.2f, FColor::Yellow, "MouseRecoilReturnLimit = " + MouseRecoilReturnLimit.ToString());
-
-	//AddLookInput(-RecoilTarget);
-	
-	// if (MouseRecoilTracker.ComponentwiseAllLessOrEqual(MouseRecoilReturnLimit))
-	// {
-	// 	
-	// }
-	
-	// MouseRecoilTracker = FVector2D::ZeroVector;
-}
-
-// void AShooterPlayerController::UseThrowableItem()
-// {	
-// 	FEquipmentData ThrowableData = *PlayerInventoryComp->EquipmentSlot.GetRow<FEquipmentData>("");
-// 	
-// 	int EquipmentCount = PlayerInventoryComp->GetEquipment(ThrowableData.EquipmentName);
-// 	
-// 	if (EquipmentCount <= 0) return;
-// 	
-// 	const AActor* ThrowableActor = ThrowableData.EquipmentActor;
-// 	AActor* SpawnedThrowable = GetWorld()->SpawnActor(ThrowableActor->GetClass());
-// 	//AActor* SpawnedThrowable = GetWorld()->SpawnActor(ThrowableActor);
-// 	
-// 	if (!SpawnedThrowable) return;
-// 	
-// 	SpawnedThrowable->SetActorLocation(PlayerCameraManager->GetTransform().GetLocation() + PlayerCameraManager->GetActorForwardVector() * 150);
-// 	SpawnedThrowable->GetComponentByClass<UStaticMeshComponent>()->SetSimulatePhysics(true);
-// 	SpawnedThrowable->GetComponentByClass<UStaticMeshComponent>()->AddImpulse(ThrowableVelocity * PlayerCameraManager->GetCameraRotation().Vector(), "None", true);
-// 	
-// 	UExplosiveComponent* ExplosiveComponent = SpawnedThrowable->GetComponentByClass<UExplosiveComponent>();
-// 	if (ExplosiveComponent)
-// 	{
-// 		if (IsDamageBoostActive)
-// 		{
-// 			ExplosiveComponent->SetDamage(ThrowableData.Damage *= DamageBoostMultiplier);
-// 		}
-// 		else ExplosiveComponent->SetDamage(ThrowableData.Damage);
-// 		ExplosiveComponent->SetBlastRadius(ThrowableData.BlastRadius);
-// 		ExplosiveComponent->SetFuseTime(ThrowableData.FuseTime);
-// 	}
-// 	
-// 	PlayerInventoryComp->RemoveEquipment(ThrowableData.EquipmentName, 1);
-// }
-
-// void AShooterPlayerController::UseBuffItem()
-// {
-// 	if (PlayerInventoryComp->SupportItemSlot.IsNull()) return;
-// 	
-// 	float TimerLength = PlayerInventoryComp->GetEquippedSupportData().BuffDuration;
-// 	EBuffEffects CurrentBuffEffect = PlayerInventoryComp->GetEquippedSupportData().BuffEffect;
-// 	switch (CurrentBuffEffect)
-// 	{
-// 	case EBuffEffects::None:
-// 		break;
-// 	case EBuffEffects::Heal:
-// 		PlayerHealthComp->AddHealth(PlayerInventoryComp->GetEquippedSupportData().HealAmount);
-// 		break;
-// 	case EBuffEffects::SpeedBoost:
-// 		if (GetWorldTimerManager().GetTimerRemaining(BuffTimer) > 0) break;
-// 		UseSpeedBoost();
-// 		GetWorldTimerManager().SetTimer(BuffTimer, this, &AShooterPlayerController::StopSpeedBoost, TimerLength, false);
-// 		break;
-// 	case EBuffEffects::DamageBoost:
-// 		if (GetWorldTimerManager().GetTimerRemaining(BuffTimer) > 0) break;
-// 		UseDamageBoost();
-// 		GetWorldTimerManager().SetTimer(BuffTimer, this, &AShooterPlayerController::StopDamageBoost, TimerLength, false);
-// 		break;
-// 	case EBuffEffects::SlowTime:
-// 		if (GetWorldTimerManager().GetTimerRemaining(BuffTimer) > 0) break;
-// 		UseSlowTime();
-// 		GetWorldTimerManager().SetTimer(BuffTimer, this, &AShooterPlayerController::StopSlowTime, TimerLength / SlowTimeDivision, false);
-// 		break;
-// 	default:
-// 		break;
-// 	}
-// 	
-// 	FDataTableRowHandle Empty;
-// 	PlayerInventoryComp->SupportItemSlot = Empty;
-// }
-
-// FVector2D AShooterPlayerController::GetHipfireRecoil()
-// {
-// 	const float RecoilX = FMath::RandRange(GetEquippedWeapon().HipfireRecoilMinX, GetEquippedWeapon().HipfireRecoilMaxX);
-// 	const float RecoilY = GetEquippedWeapon().HipfireRecoilY;
-//
-// 	return FVector2D(RecoilX, RecoilY);
-// }
-//
-// FVector2D AShooterPlayerController::GetAimingRecoil()
-// {
-// 	const float RecoilX = FMath::RandRange(GetEquippedWeapon().AimingRecoilMinX, GetEquippedWeapon().AimingRecoilMaxX);
-// 	const float RecoilY = GetEquippedWeapon().AimingRecoilY;
-//
-// 	return FVector2D(RecoilX, RecoilY);
-// }
-
-
-void AShooterPlayerController::Tick(float DeltaTime)
-{
-	if (IsDamageBoostActive) GEngine->AddOnScreenDebugMessage(10, 0.2f, FColor::Red, TEXT("Damage Boost Active"));
-
-	GEngine->AddOnScreenDebugMessage(4, 0.2f, FColor::Red, "Recoil Cache: " + RecoilCache.ToString());
-	
-	// ------ DASHING ------
-	
-	if (!PlayerCharacter->GetCharacterMovement()->IsFalling() && DashCooldownValue > 0.0f)
-	{
-		DashCooldownValue -= DeltaTime;
-
-		//FString DashText = FString::SanitizeFloat(DashCooldownValue);
-		//GEngine->AddOnScreenDebugMessage(-1, 0.2f, FColor::Green, TEXT("Dash Cooldown = " + DashText));
-	}
-
-	// ------ FIRE RATE ------
-
-	if (FireRate > 0) FireRate -= DeltaTime * GetEquippedWeapon().FireRate * (GetEquippedWeapon().FireRate / 60);
-
 }
