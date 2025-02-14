@@ -25,9 +25,20 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category="Camera")
 	UCameraComponent* CameraComponent;
 
+	UPROPERTY(EditDefaultsOnly, Category="Mesh")
+	USkeletalMeshComponent* ThirdPersonMeshComponent;
+	
 	// ------ DEBUG ------
 
 	UPROPERTY(EditDefaultsOnly, Category="Debug")
 	bool ShowDebugInfo = true;
+
+public:
+	
+	// ------ GETTER FUNCTIONS ------
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="Player Getters")
+	UCameraComponent* GetFirstPersonCameraComponent() { return CameraComponent; }
+
 	
 };

@@ -23,7 +23,6 @@ UInventoryComponent::UInventoryComponent()
 	MaxAmmo.Add(EAmmoType::Rockets, 9);
 	MaxAmmo.Add(EAmmoType::SniperRifle, 16);
 	MaxAmmo.Add(EAmmoType::Lightning, 16);
-
 	
 }
 
@@ -33,6 +32,23 @@ void UInventoryComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
+	SortWeapons();
+}
+
+void UInventoryComponent::SortWeapons(EWeaponSortingMethod SortingMethod)
+{
+	if (SortingMethod == EWeaponSortingMethod::Ascending)
+	{
+		Weapons.Sort([](const TSubclassOf<AWeaponActor>& a , const TSubclassOf<AWeaponActor>& b){
+			return a->GetDefaultObject<AWeaponActor>()->GetWeaponSlot() < b->GetDefaultObject<AWeaponActor>()->GetWeaponSlot();
+		});
+	}
+	else
+	{
+		Weapons.Sort([](const TSubclassOf<AWeaponActor>& a , const TSubclassOf<AWeaponActor>& b){
+			return a->GetDefaultObject<AWeaponActor>()->GetWeaponSlot() > b->GetDefaultObject<AWeaponActor>()->GetWeaponSlot();
+		});
+	}
 	
 	
 }

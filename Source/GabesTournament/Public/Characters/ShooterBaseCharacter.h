@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Actors/Weapons/WeaponActor.h"
 #include "GameFramework/Character.h"
 #include "ShooterBaseCharacter.generated.h"
 
@@ -21,23 +22,37 @@ protected:
 
 	// ------ COMPONENTS ------
 
-	UPROPERTY(EditDefaultsOnly, Category="Weapons")
-	UChildActorComponent* WeaponChildActorComponent;
-
 	UPROPERTY(EditDefaultsOnly, Category="Health")
 	class UHealthComponent* HealthComponent;
 
 	UPROPERTY(EditDefaultsOnly, Category="Inventory")
 	class UInventoryComponent* InventoryComponent;
+
+	UPROPERTY(EditDefaultsOnly, Category="Weapons", meta=(AllowedClasses="AWeaponActor"))
+	UChildActorComponent* WeaponChildActorComponent;
 	
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-public:	
+public:
+
+	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
+	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
-	// Called to bind functionality to input
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	// ------ GETTERS ------
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="Shooter Character Getters")
+	UHealthComponent* GetHealthComponent() { return HealthComponent; }
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="Shooter Character Getters")
+	UInventoryComponent* GetInventoryComponent() { return InventoryComponent; }
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="Shooter Character Getters")
+	UChildActorComponent* GetWeaponChildActorComponent() { return WeaponChildActorComponent; }
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="Shooter Character Getters")
+	AWeaponActor* GetEquippedWeapon() { return Cast<AWeaponActor>(WeaponChildActorComponent->GetChildActor()); }
 
 };

@@ -8,10 +8,17 @@ APlayerCharacter::APlayerCharacter()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
+	bReplicates = true;
+
 	CameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	CameraComponent->SetupAttachment(GetRootComponent());
 
 	GetMesh()->SetupAttachment(CameraComponent);
+	GetMesh()->SetOnlyOwnerSee(true);
+
+	ThirdPersonMeshComponent = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("ThirdPersonMesh"));
+	ThirdPersonMeshComponent->SetupAttachment(CameraComponent);
+	ThirdPersonMeshComponent->SetOwnerNoSee(true);
 }
 
 void APlayerCharacter::BeginPlay()
