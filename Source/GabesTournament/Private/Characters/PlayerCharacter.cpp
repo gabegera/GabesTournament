@@ -3,6 +3,8 @@
 
 #include "Characters/PlayerCharacter.h"
 
+#include "Components/HealthActorComponent.h"
+
 
 APlayerCharacter::APlayerCharacter()
 {
@@ -12,6 +14,7 @@ APlayerCharacter::APlayerCharacter()
 
 	CameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	CameraComponent->SetupAttachment(GetRootComponent());
+	CameraComponent->bUsePawnControlRotation = true;
 
 	GetMesh()->SetupAttachment(CameraComponent);
 	GetMesh()->SetOnlyOwnerSee(true);
@@ -44,3 +47,4 @@ void APlayerCharacter::Tick(float DeltaTime)
 		GEngine->AddOnScreenDebugMessage(900, MAX_FLT, FColor::White, FrameRateString, false);
 	}
 }
+

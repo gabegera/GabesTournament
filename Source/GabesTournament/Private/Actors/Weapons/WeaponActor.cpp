@@ -4,9 +4,9 @@
 #include "Actors/Weapons/WeaponActor.h"
 
 #include "KismetTraceUtils.h"
-#include "Characters/PlayerCharacter.h"
 #include "Components/ArrowComponent.h"
 #include "Engine/DamageEvents.h"
+#include "Kismet/KismetMathLibrary.h"
 
 
 // Sets default values
@@ -39,24 +39,27 @@ void AWeaponActor::Fire_Implementation()
 	UCameraComponent* Camera = Player->GetFirstPersonCameraComponent();
 
 	FVector ShotStart = Camera->GetComponentLocation();
-	FVector ShotTarget = Camera->GetComponentLocation() + Camera->GetForwardVector() * 1000.0f;
+	FVector ShotTarget = Camera->GetComponentLocation();
+	ShotTarget += UKismetMathLibrary::RandomUnitVectorInConeInDegrees(Camera->GetForwardVector(), BulletSpread) * 100000.0f;
 
-	FVector DebugShotStart = MuzzleArrowComponent->GetComponentLocation();
-	
-	DrawDebugLineTraceSingle(GetWorld(), DebugShotStart, ShotTarget, EDrawDebugTrace::ForDuration, true, FHitResult(), FColor::Red, FColor::Purple, GetFireRateInSeconds());
 	Server_Fire(ShotStart, ShotTarget, Player);
 
 	GetWorldTimerManager().SetTimer(FireRateTimer, GetFireRateInSeconds(), false);
 }
 
-void AWeaponActor::Server_Fire_Implementation(FVector Start, FVector End, APlayerCharacter* ShotInstigator)
+void AWeaponActor::Server_Fire_Implementation(FVector Start, FVector End, ACharacter* Causer)
 {
+	FCollisionQueryParams IgnorePlayer;
+	IgnorePlayer.AddIgnoredActor(Causer->GetUniqueID());
+	
 	FHitResult Hit;
-	GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_WorldDynamic);
+	GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_WorldDynamic, IgnorePlayer);
+	DrawDebugLineTraceSingle(GetWorld(), MuzzleArrowComponent->GetComponentLocation(), End, EDrawDebugTrace::ForDuration, true, FHitResult(), FColor::Red, FColor::Green, GetFireRateInSeconds());
 
 	if (Hit.GetActor())
 	{
-		Hit.GetActor()->TakeDamage(Damage, FDamageEvent(), ShotInstigator->GetController(), ShotInstigator);
+		GEngine->AddOnScreenDebugMessage(12, 0.2f, FColor::Purple, "Hit Actor: " + Hit.GetActor()->GetName());
+		Hit.GetActor()->TakeDamage(Damage, FPointDamageEvent(), Causer->GetController(), Causer);
 	}
 }
 

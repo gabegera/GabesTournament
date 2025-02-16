@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Characters/PlayerCharacter.h"
 #include "WeaponActor.generated.h"
 
 class UArrowComponent;
@@ -88,18 +89,22 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category="Weapon")
 	EWeaponSlot WeaponSlot = EWeaponSlot::Slot1;
 
+	// Damage per projectile fired. If shotgun this will be the damage for every pellet/projectile fired.
 	UPROPERTY(EditDefaultsOnly, Category="Weapon")
 	float Damage = 20;
 
 	// Fire Rate in RPM (Rounds per Minute)
 	UPROPERTY(EditDefaultsOnly, Category="Weapon")
 	float FireRate = 60;
-
 	FTimerHandle FireRateTimer;
-
+	
 	UPROPERTY(EditDefaultsOnly, Category="Weapon")
 	bool Automatic = false;
 
+	UPROPERTY(EditDefaultsOnly, Category="Weapon", meta=(Units="Degrees"))
+	float BulletSpread = 0.0f;
+
+	// What projectile the weapon shoots. Leave empty to shoot Hitscan.
 	UPROPERTY(EditDefaultsOnly, Category="Weapon")
 	TSubclassOf<AProjectileActor> Projectile;
 	
@@ -115,7 +120,10 @@ public:
 	void Fire_Implementation() override;
 
 	UFUNCTION(Server, Reliable)
-	void Server_Fire(FVector Start, FVector End, APlayerCharacter* ShotInstigator);
+	void Server_Fire(FVector Start, FVector End, ACharacter* Causer);
+	
+	// UFUNCTION(Client, Reliable)
+	// void Client_DealDamage(AActor* Target, ACharacter* DamageCauser, float DamageAmount);
 
 	UFUNCTION(BlueprintCallable, Category="Shooting")
 	void SecondaryFire_Implementation() override;

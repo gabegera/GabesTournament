@@ -18,14 +18,14 @@ class GABESTOURNAMENT_API AShooterPlayerController : public APlayerController, p
 {
 	GENERATED_BODY()
 
+	// Do not Call, used for caching. 
+	UPROPERTY() APlayerCharacter* PlayerCharacter = nullptr; // Use GetPlayerCharacter() instead.
+	
 public:
 	AShooterPlayerController();
 
 protected:
-
-	UPROPERTY()
-	APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(GetCharacter());
-
+	
 	// ------ ENHANCED INPUT ------
 
 		// ------ MOVEMENT INPUT ------
@@ -168,6 +168,12 @@ protected:
 
 	UFUNCTION(BlueprintCallable, Category="Weapon")
 	void EquipSlot9() { EquipWeaponFromSlot(EWeaponSlot::Slot9); }
+
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category="Weapon")
+	void Server_EquipWeapon(TSubclassOf<AWeaponActor> Weapon);
+
+	UFUNCTION(Client, Reliable, BlueprintCallable, Category="Weapon")
+	void Client_EquipWeapon(TSubclassOf<AWeaponActor> Weapon);
 	
 
 public:
@@ -176,5 +182,8 @@ public:
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="Player Controller Getters")
 	APlayerCharacter* GetPlayerCharacter() { return PlayerCharacter ? PlayerCharacter : PlayerCharacter = Cast<APlayerCharacter>(GetCharacter()); }
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="Player Controller Getters")
+	AWeaponActor* GetEquippedWeapon() { return Cast<AWeaponActor>(GetPlayerCharacter()->GetWeaponChildActorComponent()->GetChildActor()); }
 	
 };

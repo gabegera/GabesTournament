@@ -51,6 +51,9 @@ void AShooterPlayerController::BeginPlay()
 
 		SetupPlayerInputComponent(InputComponent);
 	}
+
+	// Run these functions to initialize their values.
+	GetPlayerCharacter();
 }
 
 void AShooterPlayerController::Tick(float DeltaSeconds)
@@ -137,12 +140,11 @@ void AShooterPlayerController::UseWeaponSecondary()
 
 
 void AShooterPlayerController::SwapWeapons(const FInputActionInstance& Instance)
-{
-	
+{	
 	UInventoryComponent* Inventory = GetPlayerCharacter()->GetInventoryComponent();
 	if (Inventory->GetWeapons().IsEmpty()) return;
-	AWeaponActor* EquippedWeapon = GetPlayerCharacter()->GetEquippedWeapon();
-
+	AWeaponActor* EquippedWeapon = GetEquippedWeapon();
+	
 	// If Scrolling Down, Equip the Next Weapon
 	EWeaponSortingMethod SortingMethod = EWeaponSortingMethod::Ascending;
 
@@ -150,20 +152,21 @@ void AShooterPlayerController::SwapWeapons(const FInputActionInstance& Instance)
 	if (Instance.GetValue().Get<float>() > 0) SortingMethod = EWeaponSortingMethod::Descending;
 
 	Inventory->SortWeapons(SortingMethod);
+
+	TArray<TSubclassOf<AWeaponActor>> WeaponsArray = Inventory->GetWeapons().Array();
 	
-	bool FoundEquippedWeapon = false;
-	for (TSubclassOf<AWeaponActor>& Weapon : Inventory->GetWeapons())
+	for (int i = 0; i < WeaponsArray.Num(); i++)
 	{
-		if (FoundEquippedWeapon)
+		if (WeaponsArray[i] == EquippedWeapon->GetClass())
 		{
-			GetPlayerCharacter()->GetWeaponChildActorComponent()->SetChildActorClass(Weapon);
+			if (i == WeaponsArray.Num() - 1)
+			{
+				Server_EquipWeapon(WeaponsArray[0]);
+			}
+			else Server_EquipWeapon(WeaponsArray[i + 1]);
+			
 			Inventory->SortWeapons(EWeaponSortingMethod::Ascending);
 			return;
-		}
-		
-		if (Weapon == EquippedWeapon->GetClass())
-		{
-			FoundEquippedWeapon = true;
 		}
 	}
 }
@@ -172,16 +175,26 @@ void AShooterPlayerController::EquipWeaponFromSlot(EWeaponSlot WeaponSlot)
 {
 	UInventoryComponent* Inventory = GetPlayerCharacter()->GetInventoryComponent();
 	if (Inventory->GetWeapons().IsEmpty()) return;
-	AWeaponActor* EquippedWeapon = GetPlayerCharacter()->GetEquippedWeapon();
+	AWeaponActor* EquippedWeapon = GetEquippedWeapon();
 
 	for (TSubclassOf<AWeaponActor>& Weapon : Inventory->GetWeapons())
 	{
 		if (Weapon.GetDefaultObject()->GetWeaponSlot() == WeaponSlot && Weapon != EquippedWeapon->GetClass())
 		{
-			GetPlayerCharacter()->GetWeaponChildActorComponent()->SetChildActorClass(Weapon);
+			Server_EquipWeapon(Weapon);
 			return;
 		}
 	}
+}
+
+void AShooterPlayerController::Server_EquipWeapon_Implementation(TSubclassOf<AWeaponActor> Weapon)
+{
+	Client_EquipWeapon(Weapon);
+}
+
+void AShooterPlayerController::Client_EquipWeapon_Implementation(TSubclassOf<AWeaponActor> Weapon)
+{
+	GetPlayerCharacter()->GetWeaponChildActorComponent()->SetChildActorClass(Weapon);
 }
 
 void AShooterPlayerController::Server_Dash_Implementation(FVector DashForce)

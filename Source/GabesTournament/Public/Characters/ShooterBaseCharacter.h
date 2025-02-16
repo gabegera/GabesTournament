@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Actors/Weapons/WeaponActor.h"
+#include "Components/HealthActorComponent.h"
 #include "GameFramework/Character.h"
 #include "ShooterBaseCharacter.generated.h"
 
@@ -23,7 +23,7 @@ protected:
 	// ------ COMPONENTS ------
 
 	UPROPERTY(EditDefaultsOnly, Category="Health")
-	class UHealthComponent* HealthComponent;
+	class UHealthActorComponent* HealthComponent;
 
 	UPROPERTY(EditDefaultsOnly, Category="Inventory")
 	class UInventoryComponent* InventoryComponent;
@@ -41,18 +41,31 @@ public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="Weapons")
+	bool OwnerOnlySeeWeapon = true;
+
+	// Function called at BeginPlay. If true other players Weapon Children Components will be hidden from each other.
+	UFUNCTION(Server, Reliable)
+	void Server_OwnerOnlySeeWeapon(bool isTrue);
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_IsOtherWeaponsHidden(bool isHidden);
+
+	UFUNCTION(Client, Reliable)
+	void Client_IsOwnerWeaponHidden(bool isHidden);
+
 	// ------ GETTERS ------
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="Shooter Character Getters")
-	UHealthComponent* GetHealthComponent() { return HealthComponent; }
+	float GetHealth() { return HealthComponent->GetHealth(); }
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="Shooter Character Getters")
+	UHealthActorComponent* GetHealthComponent() { return HealthComponent; }
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="Shooter Character Getters")
 	UInventoryComponent* GetInventoryComponent() { return InventoryComponent; }
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="Shooter Character Getters")
 	UChildActorComponent* GetWeaponChildActorComponent() { return WeaponChildActorComponent; }
-
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category="Shooter Character Getters")
-	AWeaponActor* GetEquippedWeapon() { return Cast<AWeaponActor>(WeaponChildActorComponent->GetChildActor()); }
 
 };
