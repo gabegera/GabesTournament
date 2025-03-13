@@ -3,8 +3,6 @@
 
 #include "Characters/PlayerCharacter.h"
 
-#include "Components/HealthActorComponent.h"
-
 
 APlayerCharacter::APlayerCharacter()
 {
@@ -17,11 +15,14 @@ APlayerCharacter::APlayerCharacter()
 	CameraComponent->bUsePawnControlRotation = true;
 
 	GetMesh()->SetupAttachment(CameraComponent);
-	GetMesh()->SetOnlyOwnerSee(true);
+	GetMesh()->SetOnlyOwnerSee(false);
+	GetMesh()->SetOwnerNoSee(true);
 
-	ThirdPersonMeshComponent = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("ThirdPersonMesh"));
-	ThirdPersonMeshComponent->SetupAttachment(CameraComponent);
-	ThirdPersonMeshComponent->SetOwnerNoSee(true);
+	FirstPersonMeshComponent = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("FirstPersonMesh"));
+	FirstPersonMeshComponent->SetupAttachment(CameraComponent);
+	FirstPersonMeshComponent->SetOnlyOwnerSee(true);
+
+	WeaponChildActorComponent->SetupAttachment(FirstPersonMeshComponent);
 }
 
 void APlayerCharacter::BeginPlay()
@@ -35,7 +36,6 @@ void APlayerCharacter::Tick(float DeltaTime)
 
 	if (ShowDebugInfo == true)
 	{
-
 		// FRAME RATE
 		float FrameRate = FMath::RoundToInt32(1 / GetWorld()->GetDeltaSeconds()) ;
 		FString FrameRateString = "FPS: " + FString::SanitizeFloat(FrameRate, 0);

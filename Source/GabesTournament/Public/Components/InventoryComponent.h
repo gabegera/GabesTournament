@@ -4,10 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "DataTables/WeaponData.h"
+#include "ShooterEnumLibrary.h"
 #include "InventoryComponent.generated.h"
 
-class AWeaponActor;
+class AWeapon;
 enum class EAmmoType : uint8;
 
 UENUM(BlueprintType)
@@ -29,14 +29,14 @@ public:
 protected:
 
 	// Ammo being carried.
-	UPROPERTY(EditDefaultsOnly, Category="Weapons")
+	UPROPERTY(EditAnywhere, Category="Weapons")
 	TMap<EAmmoType, int32> Ammo;
 	
-	UPROPERTY(EditDefaultsOnly, Category="Weapons")
-	TSet<TSubclassOf<AWeaponActor>> Weapons;
+	UPROPERTY(EditAnywhere, Category="Weapons")
+	TSet<TSubclassOf<AWeapon>> Weapons;
 
 	// How much ammo of each type the player can carry.
-	UPROPERTY(EditDefaultsOnly, Category="Weapons")
+	UPROPERTY(EditAnywhere, Category="Weapons")
 	TMap<EAmmoType, int32> MaxAmmo;
 
 	
@@ -46,22 +46,36 @@ protected:
 
 public:
 
-	UFUNCTION(BlueprintCallable, Category="Inventory Getters")
-	void SortWeapons(EWeaponSortingMethod SortingMethod = EWeaponSortingMethod::Ascending);	
+	// Called every frame
+	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;	
 
+	UFUNCTION(BlueprintCallable, Category="Inventory")
+	void SortWeapons(EWeaponSortingMethod SortingMethod = EWeaponSortingMethod::Ascending);
+
+	// Returns true if weapon is picked up.
+	UFUNCTION(BlueprintCallable, Category="Inventory")
+	bool AddWeapon(TSubclassOf<AWeapon> WeaponToAdd);
+
+	// Returns true if ammo is picked up.
+	UFUNCTION(BlueprintCallable, Category="Inventory")
+	bool AddAmmo(EAmmoType Type, int32 Amount);
+
+	UFUNCTION(BlueprintCallable, Category="Inventory")
+	bool RemoveAmmo(EAmmoType Type, int32 Amount);
+	
 	// ------ INVENTORY GETTERS ------
 
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category="Inventory Getters")
-	TSet<TSubclassOf<AWeaponActor>>& GetWeapons() { return Weapons; }
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="Inventory|Getters")
+	TSet<TSubclassOf<AWeapon>>& GetWeapons() { return Weapons; }
 
-	UFUNCTION(BlueprintCallable, Category="Inventory Getters")
-	int32 GetAmmo(EAmmoType AmmoType) { return Ammo[AmmoType]; }
+	UFUNCTION(BlueprintCallable, Category="Inventory|Getters")
+	int32 GetAmmo(EAmmoType Type) { return Ammo.FindRef(Type); }
 
-	UFUNCTION(BlueprintCallable, Category="Inventory Getters")
-	int32 GetMaxAmmo(EAmmoType AmmoType) { return MaxAmmo[AmmoType]; }
+	UFUNCTION(BlueprintCallable, Category="Inventory|Getters")
+	int32 GetMaxAmmo(EAmmoType Type) { return MaxAmmo.FindRef(Type); }
 
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="Inventory|Getters")
+	FString GetAmmoTypeName(EAmmoType Type);
 	
-	
-	// Called every frame
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+
 };

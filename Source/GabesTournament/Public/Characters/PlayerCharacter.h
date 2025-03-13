@@ -4,12 +4,12 @@
 
 #include "CoreMinimal.h"
 #include "Camera/CameraComponent.h"
-#include "Characters/ShooterBaseCharacter.h"
+#include "Characters/ShooterCharacter.h"
 #include "PlayerCharacter.generated.h"
 
 
 UCLASS()
-class GABESTOURNAMENT_API APlayerCharacter : public AShooterBaseCharacter
+class GABESTOURNAMENT_API APlayerCharacter : public AShooterCharacter
 {
 	GENERATED_BODY()
 
@@ -23,10 +23,10 @@ protected:
 	virtual void Tick(float DeltaTime) override;
 
 	UPROPERTY(EditDefaultsOnly, Category="Camera")
-	UCameraComponent* CameraComponent;
+	TObjectPtr<UCameraComponent> CameraComponent;
 
 	UPROPERTY(EditDefaultsOnly, Category="Mesh")
-	USkeletalMeshComponent* ThirdPersonMeshComponent;
+	TObjectPtr<USkeletalMeshComponent> FirstPersonMeshComponent;
 	
 	// ------ DEBUG ------
 

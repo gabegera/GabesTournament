@@ -21,7 +21,9 @@ void AShooterPlayerController::SetupPlayerInputComponent(UInputComponent* Player
 	Input->BindAction(Input_Dash, ETriggerEvent::Triggered, this, &AShooterPlayerController::Dash);
 	
 	Input->BindAction(Input_Fire, ETriggerEvent::Triggered, this, &AShooterPlayerController::UseWeapon);
+	Input->BindAction(Input_ReleaseFire, ETriggerEvent::Triggered, this, &AShooterPlayerController::UseWeaponReleased);
 	Input->BindAction(Input_SecondaryFire, ETriggerEvent::Triggered, this, &AShooterPlayerController::UseWeaponSecondary);
+	Input->BindAction(Input_ReleaseSecondaryFire, ETriggerEvent::Triggered, this, &AShooterPlayerController::UseWeaponSecondaryReleased);
 	
 	Input->BindAction(Input_SwapWeapons, ETriggerEvent::Triggered, this, &AShooterPlayerController::SwapWeapons);
 	Input->BindAction(Input_EquipSlot1, ETriggerEvent::Triggered, this, &AShooterPlayerController::EquipSlot1);
@@ -133,9 +135,19 @@ void AShooterPlayerController::UseWeapon()
 	Execute_Fire(GetPlayerCharacter()->GetWeaponChildActorComponent()->GetChildActor());	
 }
 
+void AShooterPlayerController::UseWeaponReleased()
+{
+	Execute_ReleasePrimaryTrigger(GetPlayerCharacter()->GetWeaponChildActorComponent()->GetChildActor());
+}
+
 void AShooterPlayerController::UseWeaponSecondary()
 {
 	Execute_SecondaryFire(GetPlayerCharacter()->GetWeaponChildActorComponent()->GetChildActor());
+}
+
+void AShooterPlayerController::UseWeaponSecondaryReleased()
+{
+	Execute_ReleaseSecondaryTrigger(GetPlayerCharacter()->GetWeaponChildActorComponent()->GetChildActor());
 }
 
 
@@ -143,7 +155,7 @@ void AShooterPlayerController::SwapWeapons(const FInputActionInstance& Instance)
 {	
 	UInventoryComponent* Inventory = GetPlayerCharacter()->GetInventoryComponent();
 	if (Inventory->GetWeapons().IsEmpty()) return;
-	AWeaponActor* EquippedWeapon = GetEquippedWeapon();
+	AWeapon* EquippedWeapon = GetEquippedWeapon();
 	
 	// If Scrolling Down, Equip the Next Weapon
 	EWeaponSortingMethod SortingMethod = EWeaponSortingMethod::Ascending;
@@ -153,7 +165,7 @@ void AShooterPlayerController::SwapWeapons(const FInputActionInstance& Instance)
 
 	Inventory->SortWeapons(SortingMethod);
 
-	TArray<TSubclassOf<AWeaponActor>> WeaponsArray = Inventory->GetWeapons().Array();
+	TArray<TSubclassOf<AWeapon>> WeaponsArray = Inventory->GetWeapons().Array();
 	
 	for (int i = 0; i < WeaponsArray.Num(); i++)
 	{
@@ -175,9 +187,9 @@ void AShooterPlayerController::EquipWeaponFromSlot(EWeaponSlot WeaponSlot)
 {
 	UInventoryComponent* Inventory = GetPlayerCharacter()->GetInventoryComponent();
 	if (Inventory->GetWeapons().IsEmpty()) return;
-	AWeaponActor* EquippedWeapon = GetEquippedWeapon();
+	AWeapon* EquippedWeapon = GetEquippedWeapon();
 
-	for (TSubclassOf<AWeaponActor>& Weapon : Inventory->GetWeapons())
+	for (TSubclassOf<AWeapon>& Weapon : Inventory->GetWeapons())
 	{
 		if (Weapon.GetDefaultObject()->GetWeaponSlot() == WeaponSlot && Weapon != EquippedWeapon->GetClass())
 		{
@@ -187,14 +199,18 @@ void AShooterPlayerController::EquipWeaponFromSlot(EWeaponSlot WeaponSlot)
 	}
 }
 
-void AShooterPlayerController::Server_EquipWeapon_Implementation(TSubclassOf<AWeaponActor> Weapon)
-{
-	Client_EquipWeapon(Weapon);
-}
-
-void AShooterPlayerController::Client_EquipWeapon_Implementation(TSubclassOf<AWeaponActor> Weapon)
+void AShooterPlayerController::Server_EquipWeapon_Implementation(TSubclassOf<AWeapon> Weapon)
 {
 	GetPlayerCharacter()->GetWeaponChildActorComponent()->SetChildActorClass(Weapon);
+	GetPlayerCharacter()->GetThirdPersonWeaponComponent()->SetSkeletalMesh(Weapon.GetDefaultObject()->GetMesh());
+	GetPlayerCharacter()->SetEquippedWeapon(Weapon.GetDefaultObject());
+	Multicast_EquipWeapon(GetPlayerCharacter(), Weapon);
+}
+
+void AShooterPlayerController::Multicast_EquipWeapon_Implementation(APlayerCharacter* Target, TSubclassOf<AWeapon> Weapon)
+{
+	Target->GetWeaponChildActorComponent()->SetChildActorClass(Weapon);
+	Target->GetThirdPersonWeaponComponent()->SetSkeletalMesh(Weapon.GetDefaultObject()->GetMesh());
 }
 
 void AShooterPlayerController::Server_Dash_Implementation(FVector DashForce)

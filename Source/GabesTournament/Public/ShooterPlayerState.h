@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "ShooterEnumLibrary.h"
 #include "GameFramework/PlayerState.h"
 #include "ShooterPlayerState.generated.h"
 
@@ -13,5 +14,20 @@ UCLASS()
 class GABESTOURNAMENT_API AShooterPlayerState : public APlayerState
 {
 	GENERATED_BODY()
+
+protected:
+
+	UPROPERTY(EditAnywhere)
+	FName UserName = "Player";
 	
+	UPROPERTY(EditAnywhere)
+	ETeam Team = ETeam::Team1;
+
+public:
+	
+	UFUNCTION(BlueprintCallable)
+	ETeam SetTeam(ETeam NewTeam) { return Team = NewTeam;}
+	
+	UFUNCTION(BlueprintCallable, BlueprintPure)
+	ETeam GetTeam() { return Team; }
 };

@@ -6,7 +6,7 @@
 #include "GameFramework/PlayerController.h"
 #include "Characters/PlayerCharacter.h"
 #include "EnhancedInputSubsystems.h"
-#include "Actors/Weapons/WeaponActor.h"
+#include "Actors/Weapons/Weapon.h"
 #include "InputMappingContext.h"
 #include "EnhancedInputComponent.h"
 #include "ShooterPlayerController.generated.h"
@@ -51,7 +51,13 @@ protected:
 	UInputAction* Input_Fire;
 
 	UPROPERTY(EditAnywhere, Category="Input")
+	UInputAction* Input_ReleaseFire;
+
+	UPROPERTY(EditAnywhere, Category="Input")
 	UInputAction* Input_SecondaryFire;
+
+	UPROPERTY(EditAnywhere, Category="Input")
+	UInputAction* Input_ReleaseSecondaryFire;
 
 	UPROPERTY(EditAnywhere, Category="Input")
 	UInputAction* Input_SwapWeapons;
@@ -132,7 +138,13 @@ protected:
 	void UseWeapon();
 
 	UFUNCTION(BlueprintCallable, Category="Weapon")
+	void UseWeaponReleased();
+
+	UFUNCTION(BlueprintCallable, Category="Weapon")
 	void UseWeaponSecondary();
+
+	UFUNCTION(BlueprintCallable, Category="Weapon")
+	void UseWeaponSecondaryReleased();
 
 	// Scrolls through the weapon inventory to find the next one to equip.
 	UFUNCTION(BlueprintCallable, Category="Weapon")
@@ -170,10 +182,10 @@ protected:
 	void EquipSlot9() { EquipWeaponFromSlot(EWeaponSlot::Slot9); }
 
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category="Weapon")
-	void Server_EquipWeapon(TSubclassOf<AWeaponActor> Weapon);
+	void Server_EquipWeapon(TSubclassOf<AWeapon> Weapon);
 
-	UFUNCTION(Client, Reliable, BlueprintCallable, Category="Weapon")
-	void Client_EquipWeapon(TSubclassOf<AWeaponActor> Weapon);
+	UFUNCTION(NetMulticast, Reliable, BlueprintCallable, Category="Weapon")
+	void Multicast_EquipWeapon(APlayerCharacter* Target, TSubclassOf<AWeapon> Weapon);
 	
 
 public:
@@ -184,6 +196,6 @@ public:
 	APlayerCharacter* GetPlayerCharacter() { return PlayerCharacter ? PlayerCharacter : PlayerCharacter = Cast<APlayerCharacter>(GetCharacter()); }
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="Player Controller Getters")
-	AWeaponActor* GetEquippedWeapon() { return Cast<AWeaponActor>(GetPlayerCharacter()->GetWeaponChildActorComponent()->GetChildActor()); }
+	AWeapon* GetEquippedWeapon() { return Cast<AWeapon>(GetPlayerCharacter()->GetWeaponChildActorComponent()->GetChildActor()); }
 	
 };

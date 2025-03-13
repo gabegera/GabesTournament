@@ -2,8 +2,7 @@
 
 
 #include "Components/InventoryComponent.h"
-
-#include "DataTables/WeaponData.h"
+#include "Actors/Weapons/Weapon.h"
 
 
 // Sets default values for this component's properties
@@ -33,26 +32,12 @@ void UInventoryComponent::BeginPlay()
 	Super::BeginPlay();
 
 	SortWeapons();
-}
 
-void UInventoryComponent::SortWeapons(EWeaponSortingMethod SortingMethod)
-{
-	if (SortingMethod == EWeaponSortingMethod::Ascending)
+	for (TPair i : MaxAmmo)
 	{
-		Weapons.Sort([](const TSubclassOf<AWeaponActor>& a , const TSubclassOf<AWeaponActor>& b){
-			return a->GetDefaultObject<AWeaponActor>()->GetWeaponSlot() < b->GetDefaultObject<AWeaponActor>()->GetWeaponSlot();
-		});
+		AddAmmo(i.Key, i.Value);
 	}
-	else
-	{
-		Weapons.Sort([](const TSubclassOf<AWeaponActor>& a , const TSubclassOf<AWeaponActor>& b){
-			return a->GetDefaultObject<AWeaponActor>()->GetWeaponSlot() > b->GetDefaultObject<AWeaponActor>()->GetWeaponSlot();
-		});
-	}
-	
-	
 }
-
 
 // Called every frame
 void UInventoryComponent::TickComponent(float DeltaTime, ELevelTick TickType,
@@ -62,4 +47,110 @@ void UInventoryComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 
 	
 }
+
+void UInventoryComponent::SortWeapons(EWeaponSortingMethod SortingMethod)
+{
+	if (SortingMethod == EWeaponSortingMethod::Ascending)
+	{
+		Weapons.Sort([](const TSubclassOf<AWeapon>& a , const TSubclassOf<AWeapon>& b){
+			return a->GetDefaultObject<AWeapon>()->GetWeaponSlot() < b->GetDefaultObject<AWeapon>()->GetWeaponSlot();
+		});
+	}
+	else
+	{
+		Weapons.Sort([](const TSubclassOf<AWeapon>& a , const TSubclassOf<AWeapon>& b){
+			return a->GetDefaultObject<AWeapon>()->GetWeaponSlot() > b->GetDefaultObject<AWeapon>()->GetWeaponSlot();
+		});
+	}
+}
+
+bool UInventoryComponent::AddWeapon(TSubclassOf<AWeapon> WeaponToAdd)
+{
+	AWeapon* DefaultWeapon = WeaponToAdd.GetDefaultObject();
+	if (DefaultWeapon == nullptr) return false;
+
+	if (DefaultWeapon->GetPrimaryAmmoType() != EAmmoType::None)
+	{
+		AddAmmo(DefaultWeapon->GetPrimaryAmmoType(), DefaultWeapon->GetPrimaryPickupAmmo());
+	}
+
+	if (DefaultWeapon->GetSecondaryAmmoType() != EAmmoType::None && DefaultWeapon->GetSecondaryAmmoType() != DefaultWeapon->GetPrimaryAmmoType())
+	{
+		AddAmmo(DefaultWeapon->GetSecondaryAmmoType(), DefaultWeapon->GetSecondaryPickupAmmo());
+	}
+
+	Weapons.Add(WeaponToAdd);
+
+	return true;
+}
+
+bool UInventoryComponent::AddAmmo(EAmmoType Type, int32 Amount)
+{
+	if (GetAmmo(Type) >= GetMaxAmmo(Type)) return false;
+	
+	Ammo.Add(Type, Ammo.FindRef(Type) + Amount);
+
+	// Clamps Minimum value to 0.
+	if (Ammo.FindRef(Type) < 0) Ammo.Add(Type, 0);
+	
+	// Clamps Maximum value to MaxAmmo.
+	if (Ammo.FindRef(Type) > GetMaxAmmo(Type))
+	{
+		Ammo.Add(Type, GetMaxAmmo(Type));
+	}
+
+	FString DebugMessage = "Added " + FString::FromInt(GetAmmo(Type)) + " " + GetAmmoTypeName(Type) + " Ammo.";
+	GEngine->AddOnScreenDebugMessage(200, 3.0f, FColor::Yellow, DebugMessage);
+	return true;
+}
+
+bool UInventoryComponent::RemoveAmmo(EAmmoType Type, int32 Amount)
+{
+	if (GetAmmo(Type) <= 0) return false;
+
+	Ammo.Add(Type, GetAmmo(Type) - Amount);
+
+	// Clamps Minimum value to 0.
+	if (Ammo.FindRef(Type) < 0) Ammo.Add(Type, 0);
+	
+	// Clamps Maximum value to MaxAmmo.
+	if (Ammo.FindRef(Type) > GetMaxAmmo(Type))
+	{
+		Ammo.Add(Type, GetMaxAmmo(Type));
+	}
+
+	return true;
+}
+
+FString UInventoryComponent::GetAmmoTypeName(EAmmoType Type)
+{
+	switch (Type)
+	{
+		case EAmmoType::AssaultRifleBullets:
+			return "Assault Rifle Bullets";
+		case EAmmoType::AssaultRifleGrenades:
+			return "Assault Rifle Grenades";
+		case EAmmoType::BioRifle:
+			return "Bio Rifle";
+		case EAmmoType::ShockRifle:
+			return "Shock Rifle";
+		case EAmmoType::LinkGun:
+			return "Link Gun";
+		case EAmmoType::Minigun:
+			return "Minigun";
+		case EAmmoType::Flak:
+			return "Flak";
+		case EAmmoType::Rockets:
+			return "Rockets";
+		case EAmmoType::SniperRifle:
+			return "Sniper Rifle";
+		case EAmmoType::Lightning:
+			return "Lightning";
+		default:
+			UE_LOG(LogTemp, Warning, TEXT("Missing Name for AmmoType: %hhd"), Type);
+			return "ERROR: Missing Name for AmmoType";
+	}
+}
+
+
 
