@@ -14,7 +14,7 @@
 enum class EWeaponSlot : uint8;
 
 UCLASS()
-class GABESTOURNAMENT_API AShooterPlayerController : public APlayerController, public IWeaponInterface
+class GABESTOURNAMENT_API AShooterPlayerController : public APlayerController
 {
 	GENERATED_BODY()
 
@@ -135,16 +135,16 @@ protected:
 	// ------ WEAPON FUNCTIONS ------
 	
 	UFUNCTION(BlueprintCallable, Category="Weapon")
-	void UseWeapon();
+	void Fire();
 
 	UFUNCTION(BlueprintCallable, Category="Weapon")
-	void UseWeaponReleased();
+	void ReleaseFire();
 
 	UFUNCTION(BlueprintCallable, Category="Weapon")
-	void UseWeaponSecondary();
+	void SecondaryFire();
 
 	UFUNCTION(BlueprintCallable, Category="Weapon")
-	void UseWeaponSecondaryReleased();
+	void ReleaseSecondaryFire();
 
 	// Scrolls through the weapon inventory to find the next one to equip.
 	UFUNCTION(BlueprintCallable, Category="Weapon")

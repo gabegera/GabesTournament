@@ -22,7 +22,8 @@ protected:
 	UPROPERTY(EditAnywhere)
 	int32 ScoreToWin = 50;
 
-	FCharacterHasDied CharacterHasDiedDelegate;
+	UPROPERTY(BlueprintReadOnly)
+	FCharacterHasDied PlayerDiedDelegate;
 
 public:
 

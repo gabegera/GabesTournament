@@ -44,12 +44,41 @@ void AShooterCharacter::BeginPlay()
 	}
 
 	Server_OwnerOnlySeeWeapon(OwnerOnlySeeWeapon);
+
+	if (!GetController() || !GetController()->GetPlayerState<AShooterPlayerState>()) return;
+	switch (GetController()->GetPlayerState<AShooterPlayerState>()->GetTeam())
+	{
+	case ETeam::BlueTeam:
+		SetMeshColor(FColor::Blue);
+		break;
+	case ETeam::RedTeam:
+		SetMeshColor(FColor::Red);
+		break;
+	case ETeam::OrangeTeam:
+		SetMeshColor(FColor::Orange);
+		break;
+	case ETeam::YellowTeam:
+		SetMeshColor(FColor::Yellow);
+		break;
+	case ETeam::GreenTeam:
+		SetMeshColor(FColor::Green);
+		break;
+	case ETeam::PurpleTeam:
+		SetMeshColor(FColor::Purple);
+		break;
+	case ETeam::CyanTeam:
+		SetMeshColor(FColor::Cyan);
+		break;
+	case ETeam::SilverTeam:
+		SetMeshColor(FColor::Silver);
+		break;
+	}
 }
 
 float AShooterCharacter::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser)
 {
 	HealthComponent->LoseHealth(DamageAmount);
-	if (HealthComponent->GetHealth() <= 0) Server_Die(DamageEvent, EventInstigator, DamageCauser);
+	if (HealthComponent->GetHealth() <= 0) Die(DamageEvent, EventInstigator, DamageCauser);
 	
 	return DamageAmount;
 }
@@ -87,10 +116,24 @@ void AShooterCharacter::Tick(float DeltaTime)
 
 }
 
-bool AShooterCharacter::PickupWeapon_Implementation(TSubclassOf<AWeapon> Weapon)
+void AShooterCharacter::SetMeshColor(FColor Color)
 {
-	return InventoryComponent->AddWeapon(Weapon);
+	UMaterialInstanceDynamic* MaterialInstance;
+
+	MaterialInstance = UMaterialInstanceDynamic::Create(GetMesh()->GetMaterial(0), this);
+	MaterialInstance->SetVectorParameterValue("Tint", Color);
+	GetMesh()->SetMaterial(0, MaterialInstance);
+
+	MaterialInstance = UMaterialInstanceDynamic::Create(GetMesh()->GetMaterial(1), this);
+	MaterialInstance->SetVectorParameterValue("Tint", Color);
+	GetMesh()->SetMaterial(1, MaterialInstance);
+	
 }
+
+// bool AShooterCharacter::PickupWeapon_Implementation(TSubclassOf<AWeapon> Weapon)
+// {
+// 	return InventoryComponent->AddWeapon(Weapon);
+// }
 
 bool AShooterCharacter::PickupAmmo_Implementation(EAmmoType AmmoType, int32 AmmoAmount)
 {
@@ -113,10 +156,13 @@ void AShooterCharacter::Client_SetIsOwnerWeaponHidden_Implementation(bool isHidd
 	WeaponChildActorComponent->SetHiddenInGame(isHidden);
 }
 
-void AShooterCharacter::Server_Die_Implementation(FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+void AShooterCharacter::Die(FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
 	ActivateRagdoll();
+
 	CharacterHasDiedDelegate.Broadcast(this, DamageEvent, EventInstigator, DamageCauser);
+
+	StartDespawnTimer(TimeToDespawnAfterDeath);
 }
 
 void AShooterCharacter::ActivateRagdoll()
@@ -139,6 +185,22 @@ void AShooterCharacter::DeactivateRagdoll()
 	
 	ThirdPersonWeaponMeshComponent->SetHiddenInGame(false);
 	WeaponChildActorComponent->SetHiddenInGame(false);
+}
+
+void AShooterCharacter::StartDespawnTimer(float Seconds)
+{
+	FTimerHandle DespawnTimer;
+
+	if (Seconds <= 0) Despawn();
+	else
+	{
+		GetWorldTimerManager().SetTimer(DespawnTimer, this, &AShooterCharacter::Despawn, Seconds);
+	}
+}
+
+void AShooterCharacter::Despawn()
+{
+	Destroy();
 }
 
 void AShooterCharacter::AddDeathToKillfeed(ACharacter* DeadCharacter, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)

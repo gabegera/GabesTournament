@@ -52,9 +52,13 @@ enum class ESecondaryFireType : uint8
 UENUM(BlueprintType)
 enum class ETeam : uint8
 {
-	Team1 = 0 UMETA(DisplayName = "Team 1"),
-	Team2 = 1 UMETA(DisplayName = "Team 2"),
-	Team3 = 2 UMETA(DisplayName = "Team 3"),
-	Team4 = 3 UMETA(DisplayName = "Team 4"),
+	BlueTeam = 0 UMETA(DisplayName = "Blue Team"),
+	RedTeam = 1 UMETA(DisplayName = "Red Team"),
+	OrangeTeam = 2 UMETA(DisplayName = "Orange Team"),
+	YellowTeam = 3 UMETA(DisplayName = "Yellow Team"),
+	GreenTeam = 4 UMETA(DisplayName = "Green Team"),
+	PurpleTeam = 5 UMETA(DisplayName = "Purple Team"),
+	CyanTeam = 6 UMETA(DisplayName = "Cyan Team"),
+	SilverTeam = 7 UMETA(DisplayName = "Silver Team"),
 };
 

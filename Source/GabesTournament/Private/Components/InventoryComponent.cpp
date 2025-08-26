@@ -69,15 +69,15 @@ bool UInventoryComponent::AddWeapon(TSubclassOf<AWeapon> WeaponToAdd)
 	AWeapon* DefaultWeapon = WeaponToAdd.GetDefaultObject();
 	if (DefaultWeapon == nullptr) return false;
 
-	if (DefaultWeapon->GetPrimaryAmmoType() != EAmmoType::None)
-	{
-		AddAmmo(DefaultWeapon->GetPrimaryAmmoType(), DefaultWeapon->GetPrimaryPickupAmmo());
-	}
-
-	if (DefaultWeapon->GetSecondaryAmmoType() != EAmmoType::None && DefaultWeapon->GetSecondaryAmmoType() != DefaultWeapon->GetPrimaryAmmoType())
-	{
-		AddAmmo(DefaultWeapon->GetSecondaryAmmoType(), DefaultWeapon->GetSecondaryPickupAmmo());
-	}
+	// if (DefaultWeapon->GetPrimaryAmmoType() != EAmmoType::None)
+	// {
+	// 	AddAmmo(DefaultWeapon->GetPrimaryAmmoType(), DefaultWeapon->GetPrimaryPickupAmmo());
+	// }
+	//
+	// if (DefaultWeapon->GetSecondaryAmmoType() != EAmmoType::None && DefaultWeapon->GetSecondaryAmmoType() != DefaultWeapon->GetPrimaryAmmoType())
+	// {
+	// 	AddAmmo(DefaultWeapon->GetSecondaryAmmoType(), DefaultWeapon->GetSecondaryPickupAmmo());
+	// }
 
 	Weapons.Add(WeaponToAdd);
 

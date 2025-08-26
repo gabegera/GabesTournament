@@ -3,6 +3,7 @@
 
 #include "Components/ExplosiveComponent.h"
 
+#include "ShooterPlayerState.h"
 #include "Engine/DamageEvents.h"
 #include "Kismet/KismetSystemLibrary.h"
 

@@ -7,9 +7,7 @@
 #include "GameFramework/PlayerState.h"
 #include "ShooterPlayerState.generated.h"
 
-/**
- * 
- */
+
 UCLASS()
 class GABESTOURNAMENT_API AShooterPlayerState : public APlayerState
 {
@@ -18,10 +16,10 @@ class GABESTOURNAMENT_API AShooterPlayerState : public APlayerState
 protected:
 
 	UPROPERTY(EditAnywhere)
-	FName UserName = "Player";
+	FName UserName = "Player Name";
 	
 	UPROPERTY(EditAnywhere)
-	ETeam Team = ETeam::Team1;
+	ETeam Team = ETeam::BlueTeam;
 
 public:
 	

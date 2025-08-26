@@ -4,6 +4,7 @@
 #include "Actors/Projectile.h"
 
 #include "KismetTraceUtils.h"
+#include "ShooterPlayerState.h"
 #include "Components/SphereComponent.h"
 #include "Engine/DamageEvents.h"
 #include "GameFramework/ProjectileMovementComponent.h"
@@ -45,6 +46,8 @@ AProjectile::AProjectile()
 void AProjectile::BeginPlay()
 {
 	Super::BeginPlay();
+	
+	SetLifeSpan(30.0f);
 	
 }
 

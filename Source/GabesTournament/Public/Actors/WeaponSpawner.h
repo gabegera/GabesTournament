@@ -8,7 +8,7 @@
 #include "WeaponSpawner.generated.h"
 
 UCLASS()
-class GABESTOURNAMENT_API AWeaponSpawner : public AActor, public IWeaponInterface
+class GABESTOURNAMENT_API AWeaponSpawner : public AActor
 {
 	GENERATED_BODY()
 

@@ -9,43 +9,16 @@
 #include "DataTables/WeaponData.h"
 #include "Weapon.generated.h"
 
-// This class does not need to be modified.
-UINTERFACE(MinimalAPI, Blueprintable)
-class UWeaponInterface : public UInterface
-{
-	GENERATED_BODY()
-};
-
-class GABESTOURNAMENT_API IWeaponInterface
-{
-	GENERATED_BODY()
-
-public:
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void Fire();
-
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void SecondaryFire();
-
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void ReleasePrimaryTrigger();
-
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void ReleaseSecondaryTrigger();
-
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	bool PickupWeapon(TSubclassOf<AWeapon> Weapon);
-};
-
 UENUM(BlueprintType)
 enum EPrimaryOrSecondary : uint8
 {
 	Primary = 0 UMETA(DisplayName = "Primary"),
-	Secondary = 1 UMETA(DisplayName = "Secondary")
+	Secondary = 1 UMETA(DisplayName = "Secondary"),
+	Null = 2 UMETA(DisplayName = "NULL"),
 };
 
 UCLASS()
-class GABESTOURNAMENT_API AWeapon : public AActor, public IWeaponInterface, public IDamageInterface
+class GABESTOURNAMENT_API AWeapon : public AActor
 {
 	GENERATED_BODY()
 
@@ -80,14 +53,14 @@ protected:
 	
 	// ------ WEAPON STATS -------
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(RowType = "WeaponData"))
-	FDataTableRowHandle WeaponDataTable;
+	UPROPERTY(EditAnywhere)
+	FString DisplayName = "WeaponName_NULL";
+
+	UPROPERTY(EditAnywhere)
+	EWeaponSlot WeaponSlot = EWeaponSlot::Slot1;
 
 	UPROPERTY(BlueprintReadWrite)
-	FTimerHandle PrimaryFireRateTimer;
-
-	UPROPERTY(BlueprintReadWrite)
-	FTimerHandle SecondaryFireRateTimer;
+	FTimerHandle FireRateTimer;
 
 	UPROPERTY(BlueprintReadWrite)
 	FTimerHandle BurstTimer;
@@ -104,16 +77,8 @@ protected:
 	UPROPERTY()
 	bool isPrimaryTriggerPulled = false;
 
-	// Used to ensure that a semi auto weapon only fires once per trigger pull.
-	UPROPERTY()
-	bool hasPrimarySemiAutoFired = false;
-
 	UPROPERTY()
 	bool isSecondaryTriggerPulled = false;
-
-	// Used to ensure that a semi auto weapon only fires once per trigger pull.
-	UPROPERTY()
-	bool hasSecondarySemiAutoFired = false;
 
 	// ------ CHARGING ------
 
@@ -146,41 +111,60 @@ public:
 	bool GetCanFire(const EPrimaryOrSecondary PrimaryOrSecondaryFire);
 
 	UFUNCTION(BlueprintCallable, BlueprintPure)
-	FVector GetShotTargetWithSpread(float Spread);
+	FVector VectorWithSpreadFromPoints(FVector StartLocation, FVector EndLocation, float Spread);
 
 	UFUNCTION(BlueprintCallable, BlueprintPure)
 	float ConvertFireRateToSeconds(float FireRateRPM) { return 1 / (FireRateRPM / 60); }
+
+	UFUNCTION()
+	void PullPrimaryTrigger();
 	
-	UFUNCTION(BlueprintCallable, Category="Weapon|Shooting")
-	void Fire_Implementation() override;
+	UFUNCTION()
+	void ReleasePrimaryTrigger();
 
-	UFUNCTION(BlueprintCallable, Category="Weapon|Shooting")
-	void ReleasePrimaryTrigger_Implementation() override;
+	UFUNCTION()
+	void PullSecondaryTrigger();
 
-	UFUNCTION(BlueprintCallable, Category="Weapon|Shooting")
-	void SecondaryFire_Implementation() override;
+	UFUNCTION()
+	void ReleaseSecondaryTrigger();
 
-	UFUNCTION(BlueprintCallable, Category="Weapon|Shooting")
-	void ReleaseSecondaryTrigger_Implementation() override;
+	UFUNCTION(BlueprintImplementableEvent)
+	void Fire(EPrimaryOrSecondary Primary = Primary);
 
-	UFUNCTION(BlueprintCallable, Category="Weapon|Shooting")
-	void ChargeWeapon(EPrimaryOrSecondary PrimaryOrSecondary);
+	UFUNCTION(BlueprintImplementableEvent)
+	void SecondaryFire(EPrimaryOrSecondary Secondary = Secondary);
 
+	// Charges the weapon before shooting. Returns true when fully charged.
 	UFUNCTION(BlueprintCallable, Category="Weapon|Shooting")
-	void ShootWeapon(TSubclassOf<AProjectile> Projectile, EAmmoType AmmoType, int32 AmmoCost, float Damage, float KnockbackForceMultiplier, int32 BurstCount,
-		int32 ShotgunPelletCount, float SpreadInDegrees, FTimerHandle& FireRateTimerHandle, float FireRateInSeconds, bool DoesOverheat);
+	bool ChargeWeapon(EPrimaryOrSecondary PrimaryOrSecondary, float TimeToCharge = 1.0f);
 
-	UFUNCTION(Server, Reliable, BlueprintCallable)
-	void Server_ShootHitscan(float Damage, float KnockbackForceMultiplier, FVector Start, FVector End, ACharacter* Causer);
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category="Weapon|Shooting", DisplayName="Shoot Projectile")
+	void Server_ShootProjectile(EPrimaryOrSecondary PrimaryOrSecondary = Primary, EAmmoType AmmoType = EAmmoType::None, int32 AmmoCost = 1, TSubclassOf<AProjectile> Projectile = nullptr, int32 ProjectilesToSpawn = 1, float ProjectileSpeed = 5000.0f, float Damage = 10.0f, float KnockbackForceMultiplier = 100.0f,
+						float SpreadInDegrees = 0.0f, bool isAutomatic = true, float FireRateRPM = 300.0f, bool DoesOverheat = false);
+
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category="Weapon|Shooting", DisplayName="Shoot Projectile Burst")
+	void Server_ShootProjectileBurst(EPrimaryOrSecondary PrimaryOrSecondary = Primary, EAmmoType AmmoType = EAmmoType::None, int32 AmmoCost = 1, TSubclassOf<AProjectile> Projectile = nullptr, int32 ProjectilesToSpawn = 1, int32 BurstCount = 3, float BurstDelay = 0.1f, float ProjectileSpeed = 5000.0f,
+							  float Damage = 10.0f, float KnockbackForceMultiplier = 100.0f, float SpreadInDegrees = 0.0f, bool isAutomatic = true, float FireRateRPM = 300.0f, bool DoesOverheat = false);
+
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category="Weapon|Shooting", DisplayName="Shoot Hitscan")
+	void Server_ShootHitscan(EPrimaryOrSecondary PrimaryOrSecondary = Primary, EAmmoType AmmoType = EAmmoType::None, int32 AmmoCost = 1, int32 ProjectilesToSpawn = 1, float Damage = 10.0f, float KnockbackForceMultiplier = 100.0f, float SpreadInDegrees = 0.0f, bool isAutomatic = true,
+							 float FireRateRPM = 300.0f, bool DoesOverheat = false);
+
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category="Weapon|Shooting", DisplayName="Shoot Hitscan Burst")
+	void Server_ShootHitscanBurst(EPrimaryOrSecondary PrimaryOrSecondary = Primary, EAmmoType AmmoType = EAmmoType::None, int32 AmmoCost = 1, int32 ProjectilesToSpawn = 1, int32 BurstCount = 3, float BurstDelay = 0.1f, float Damage = 10.0f, float KnockbackForceMultiplier = 100.0f,
+								  float SpreadInDegrees = 0.0f, bool isAutomatic = true, float FireRateRPM = 300.0f, bool DoesOverheat = false);
+
+	// UFUNCTION(Server, Reliable, BlueprintCallable)
+	// void Server_ShootHitscan(float Damage, float KnockbackForceMultiplier, FVector Start, FVector End, ACharacter* Causer);
 
 	// UFUNCTION(NetMulticast, Reliable, BlueprintCallable)
 	// void Multicast_ShootHitscan(float Damage, FVector Start, FVector End, ACharacter* Causer);
 
-	UFUNCTION(Server, Reliable, BlueprintCallable)
-	void Server_ShootProjectile(TSubclassOf<AProjectile> ProjectileActor, float Damage, float KnockbackForceMultiplier, FVector Start, FVector Target, ACharacter* Causer);
-
-	UFUNCTION(NetMulticast, Reliable, BlueprintCallable)
-	void Multicast_ShootProjectile(TSubclassOf<AProjectile> ProjectileActor, float Damage, FVector Start, FVector Target, ACharacter* Causer);
+	// UFUNCTION(Server, Reliable, BlueprintCallable)
+	// void Server_ShootProjectile(TSubclassOf<AProjectile> ProjectileActor, float Damage, float KnockbackForceMultiplier, FVector Start, FVector Target, ACharacter* Causer);
+	//
+	// UFUNCTION(NetMulticast, Reliable, BlueprintCallable)
+	// void Multicast_ShootProjectile(TSubclassOf<AProjectile> ProjectileActor, float Damage, FVector Start, FVector Target, ACharacter* Causer);
 
 	// ------ OVERHEATING / COOLDOWN ------
 
@@ -199,25 +183,7 @@ public:
 	USkeletalMesh* GetMesh() { return MeshComponent->GetSkeletalMeshAsset(); }
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="Weapon|Getters")
-	FWeaponData GetWeaponData();
-	
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category="Weapon|Getters")
-	EWeaponSlot GetWeaponSlot() { return GetWeaponData().WeaponSlot; }
-
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category="Weapon|Getters")
-	FString GetDisplayName() { return GetWeaponData().DisplayName; }
-
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category="Weapon|Getters")
-	float GetFireRateInRPM() { return GetWeaponData().PrimaryFireRate; }
-
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category="Weapon|Getters")
-	float GetFireRateInSeconds(EPrimaryOrSecondary PrimaryOrSecondary);
-
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category="Weapon|Getters")
-	EAmmoType GetPrimaryAmmoType() { return GetWeaponData().PrimaryAmmoType; }
-
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category="Weapon|Getters")
-	EAmmoType GetSecondaryAmmoType() { return GetWeaponData().SecondaryAmmoType; }
+	EWeaponSlot GetWeaponSlot() { return WeaponSlot; }
 
 	// Returns how much primary ammo will be added when a weapon is picked up.
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="Weapon|Getters")
@@ -231,16 +197,13 @@ public:
 	float GetCurrentOverheatValue() const { return CurrentOverheatValue; }
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="Weapon|Getters")
-	float GetOverheatThreshold() { return GetWeaponData().OverheatThreshold; }
-
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category="Weapon|Getters")
 	bool GetIsOverheated() const { return isOverheated; }
 
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category="Weapon|Getters")
-	float GetCurrentCharge(EPrimaryOrSecondary PrimaryOrSecondary);
+	// UFUNCTION(BlueprintCallable, BlueprintPure, Category="Weapon|Getters")
+	// float GetCurrentCharge(EPrimaryOrSecondary PrimaryOrSecondary);
 
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category="Weapon|Getters")
-	float GetMaxCharge(EPrimaryOrSecondary PrimaryOrSecondary);
+	// UFUNCTION(BlueprintCallable, BlueprintPure, Category="Weapon|Getters")
+	// float GetMaxCharge(EPrimaryOrSecondary PrimaryOrSecondary);
 
 	// ------ SETTERS ------
 

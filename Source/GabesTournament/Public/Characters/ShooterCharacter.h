@@ -8,14 +8,16 @@
 #include "Components/HealthComponent.h"
 #include "Components/InventoryComponent.h"
 #include "ShooterDelegates.h"
+#include "ShooterPlayerState.h"
 #include "GameFramework/Character.h"
 #include "Actors/Weapons/Weapon.h"
 #include "ShooterCharacter.generated.h"
 
+class AShooterPlayerState;
 class AWeapon;
 
 UCLASS()
-class GABESTOURNAMENT_API AShooterCharacter : public ACharacter, public IWeaponInterface, public IPickupInterface, public IDamageInterface
+class GABESTOURNAMENT_API AShooterCharacter : public ACharacter, public IPickupInterface, public IDamageInterface
 {
 	GENERATED_BODY()
 
@@ -48,6 +50,11 @@ protected:
 	
 	UPROPERTY(BlueprintReadOnly)
 	FCharacterHasDied CharacterHasDiedDelegate;
+
+	// ------ DEATH ------
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
+	float TimeToDespawnAfterDeath = 30.0f;
 	
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -68,6 +75,9 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="Weapons")
 	bool OwnerOnlySeeWeapon = true;
 
+	UFUNCTION(BlueprintCallable)
+	virtual void SetMeshColor(FColor Color);
+
 	// Function called at BeginPlay. If true other players Weapon Children Components will be hidden from each other.
 	UFUNCTION(Server, Reliable)
 	void Server_OwnerOnlySeeWeapon(bool isTrue);
@@ -78,8 +88,8 @@ public:
 	UFUNCTION(Client, Reliable)
 	void Client_SetIsOwnerWeaponHidden(bool isHidden);
 
-	UFUNCTION(Server, Reliable, BlueprintCallable)
-	void Server_Die(FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser);
+	UFUNCTION(BlueprintCallable)
+	virtual void Die(FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser);
 
 	UFUNCTION(BlueprintCallable)
 	void ActivateRagdoll();
@@ -88,12 +98,18 @@ public:
 	void DeactivateRagdoll();
 
 	UFUNCTION(BlueprintCallable)
+	void StartDespawnTimer(float Seconds);
+
+	UFUNCTION(BlueprintCallable)
+	void Despawn();
+
+	UFUNCTION(BlueprintCallable)
 	void AddDeathToKillfeed(ACharacter* DeadCharacter, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser);
 
 	// ------ PICKUP FUNCTIONS ------
 
-	UFUNCTION(BlueprintCallable)
-	bool PickupWeapon_Implementation(TSubclassOf<AWeapon> Weapon) override;
+	// UFUNCTION(BlueprintCallable)
+	// bool PickupWeapon_Implementation(TSubclassOf<AWeapon> Weapon) override;
 
 	UFUNCTION(BlueprintCallable)
 	bool PickupAmmo_Implementation(EAmmoType AmmoType, int32 AmmoAmount) override;

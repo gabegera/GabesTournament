@@ -34,6 +34,10 @@ protected:
 	bool ShowDebugInfo = true;
 
 public:
+
+	virtual void SetMeshColor(FColor Color) override;
+
+	virtual void Die(FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	
 	// ------ GETTER FUNCTIONS ------
 

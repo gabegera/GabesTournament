@@ -3,7 +3,6 @@
 
 #include "Actors/Weapons/Weapon.h"
 
-#include "KismetTraceUtils.h"
 #include "Actors/Projectile.h"
 #include "Characters/PlayerCharacter.h"
 #include "Components/ArrowComponent.h"
@@ -47,306 +46,263 @@ void AWeapon::BeginPlay()
 
 void AWeapon::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	if (!isPickup || !OtherActor->Implements<UWeaponInterface>()) return;
+	// if (!isPickup || !OtherActor->Implements<UWeaponInterface>()) return;
 	
-	if (Execute_PickupWeapon(OtherActor, GetClass()))
-	{
-		GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Orange, OtherActor->GetName() + " Picked Up " + GetWeaponData().DisplayName);
-		Destroy();
-	}
+	// if (Execute_PickupWeapon(OtherActor, GetClass()))
+	// {
+	// 	GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Orange, OtherActor->GetName() + " Picked Up " + DisplayName);
+	// 	Destroy();
+	// }
 }
 
 bool AWeapon::GetCanFire(const EPrimaryOrSecondary PrimaryOrSecondaryFire)
 {
-	if (GetWorldTimerManager().IsTimerActive(BurstTimer)) return false;
-	
-	switch (PrimaryOrSecondaryFire)
-	{
-	case Primary:
-		if (GetCharacterOwner()->GetInventoryComponent()->GetAmmo(GetWeaponData().PrimaryAmmoType) <= 0) return false;
-		if (!GetWeaponData().isPrimaryFireAutomatic && hasPrimarySemiAutoFired) return false;
-		if (GetWeaponData().DoesPrimaryOverheat && isOverheated) return false;
-		if (GetWorldTimerManager().IsTimerActive(PrimaryFireRateTimer)) return false;
-		if (!GetWeaponData().CanShootPrimaryAndSecondarySimultaneously && isSecondaryTriggerPulled) return false;
-		if (GetWeaponData().DoesPrimaryCharge && PrimaryCurrentCharge < GetWeaponData().PrimaryTimeToCharge) return false;
-	
-		break;
-	
-	case Secondary:
-		if (GetCharacterOwner()->GetInventoryComponent()->GetAmmo(GetWeaponData().SecondaryAmmoType) <= 0) return false;
-		if (!GetWeaponData().isSecondaryFireAutomatic && hasSecondarySemiAutoFired) return false;
-		if (GetWeaponData().DoesSecondaryOverheat && isOverheated) return false;
-		if (GetWorldTimerManager().IsTimerActive(SecondaryFireRateTimer)) return false;
-		if (!GetWeaponData().CanShootPrimaryAndSecondarySimultaneously && isPrimaryTriggerPulled) return false;
-		if (GetWeaponData().DoesSecondaryCharge && SecondaryCurrentCharge < GetWeaponData().SecondaryTimeToCharge) return false;
-	
-		break;
-	}
-	
+	// if (GetWorldTimerManager().IsTimerActive(BurstTimer)) return false;
+	//
+	// switch (PrimaryOrSecondaryFire)
+	// {
+	// case Primary:
+	// 	if (GetCharacterOwner()->GetInventoryComponent()->GetAmmo(GetWeaponData().PrimaryAmmoType) <= 0) return false;
+	// 	if (!GetWeaponData().isPrimaryFireAutomatic && hasPrimarySemiAutoFired) return false;
+	// 	if (GetWeaponData().DoesPrimaryOverheat && isOverheated) return false;
+	// 	if (GetWorldTimerManager().IsTimerActive(FireRateTimer)) return false;
+	// 	if (!GetWeaponData().CanShootPrimaryAndSecondarySimultaneously && isSecondaryTriggerPulled) return false;
+	// 	if (GetWeaponData().DoesPrimaryCharge && PrimaryCurrentCharge < GetWeaponData().PrimaryTimeToCharge) return false;
+	//
+	// 	break;
+	//
+	// case Secondary:
+	// 	if (GetCharacterOwner()->GetInventoryComponent()->GetAmmo(GetWeaponData().SecondaryAmmoType) <= 0) return false;
+	// 	if (!GetWeaponData().isSecondaryFireAutomatic && hasSecondarySemiAutoFired) return false;
+	// 	if (GetWeaponData().DoesSecondaryOverheat && isOverheated) return false;
+	// 	if (GetWorldTimerManager().IsTimerActive(SecondaryFireRateTimer)) return false;
+	// 	if (!GetWeaponData().CanShootPrimaryAndSecondarySimultaneously && isPrimaryTriggerPulled) return false;
+	// 	if (GetWeaponData().DoesSecondaryCharge && SecondaryCurrentCharge < GetWeaponData().SecondaryTimeToCharge) return false;
+	//
+	// 	break;
+	// }
+	//
 	return true;
 }
 
-FVector AWeapon::GetShotTargetWithSpread(float Spread)
+FVector AWeapon::VectorWithSpreadFromPoints(FVector StartLocation, FVector EndLocation, float Spread)
 {
-	UCameraComponent* Camera = GetCharacterOwner()->GetFirstPersonCameraComponent();
+	FVector Direction = EndLocation - StartLocation;
+	Direction.Normalize();
 	
-	FVector ShotTarget = Camera->GetComponentLocation();
-	ShotTarget += UKismetMathLibrary::RandomUnitVectorInConeInDegrees(Camera->GetForwardVector(), Spread / 2) * 100000.0f;
-
-	return ShotTarget;
+	return StartLocation + UKismetMathLibrary::RandomUnitVectorInConeInDegrees(Direction, Spread / 2) * FVector::Distance(StartLocation, EndLocation);
 }
 
-void AWeapon::Fire_Implementation()
+void AWeapon::PullPrimaryTrigger()
 {
+	Fire();
 	isPrimaryTriggerPulled = true;
-	
-	ChargeWeapon(Primary);
-	
-	if (!GetCanFire(Primary)) return;
-	
-	const TSubclassOf<AProjectile> Projectile = GetWeaponData().PrimaryFireProjectile.LoadSynchronous();
-	
-	ShootWeapon(Projectile, GetWeaponData().PrimaryAmmoType, GetWeaponData().PrimaryAmmoCost, GetWeaponData().PrimaryFireDamage,
-			GetWeaponData().PrimaryKnockbackForceMultiplier, GetWeaponData().PrimaryBurstCount, 
-			GetWeaponData().PrimaryShotgunPelletCount, GetWeaponData().PrimaryFireBulletSpread, PrimaryFireRateTimer, ConvertFireRateToSeconds(GetWeaponData().PrimaryFireRate),
-			GetWeaponData().DoesPrimaryOverheat);
-
-	if (!GetWeaponData().isPrimaryFireAutomatic)
-	{
-		PrimaryCurrentCharge = 0.0f;
-	}
-		
-	if (!GetWeaponData().isPrimaryFireAutomatic && (!isSecondaryTriggerPulled || !GetWeaponData().DoesSecondaryOverheat)
-		&& CurrentOverheatValue < GetWeaponData().OverheatThreshold) isCoolingDown = true;
-
-	if (GetWeaponData().isPrimaryFireAutomatic == false) hasPrimarySemiAutoFired = true;
 }
 
-void AWeapon::ReleasePrimaryTrigger_Implementation()
+void AWeapon::ReleasePrimaryTrigger()
 {
 	isPrimaryTriggerPulled = false;
-
-	GetWorldTimerManager().ClearTimer(PrimaryFireRateTimer);
-
-	if (CurrentOverheatValue < GetWeaponData().OverheatThreshold && (!isSecondaryTriggerPulled || !GetWeaponData().DoesSecondaryOverheat))
-	{
-		GetWorldTimerManager().SetTimer(CooldownDelayTimer, this, &AWeapon::StartCooldown, GetWeaponData().CooldownDelay);
-	}
-
-	hasPrimarySemiAutoFired = false;
 }
 
-void AWeapon::SecondaryFire_Implementation()
+void AWeapon::PullSecondaryTrigger()
 {
+	SecondaryFire();
 	isSecondaryTriggerPulled = true;
-	
-	ChargeWeapon(Secondary);
-	
-	if (!GetCanFire(Secondary)) return;
-	
-	const TSubclassOf<AProjectile> Projectile = GetWeaponData().SecondaryFireProjectile.LoadSynchronous();
-	
-	ShootWeapon(Projectile, GetWeaponData().SecondaryAmmoType, GetWeaponData().SecondaryAmmoCost, GetWeaponData().SecondaryFireDamage,
-			GetWeaponData().SecondaryKnockbackForceMultiplier, GetWeaponData().SecondaryBurstCount,
-			GetWeaponData().SecondaryShotgunPelletCount, GetWeaponData().SecondaryFireBulletSpread, SecondaryFireRateTimer, ConvertFireRateToSeconds(GetWeaponData().SecondaryFireRate),
-			GetWeaponData().DoesSecondaryOverheat);
-
-	if (!GetWeaponData().isSecondaryFireAutomatic)
-	{
-		SecondaryCurrentCharge = 0.0f;
-	}
-			
-	if (!GetWeaponData().isSecondaryFireAutomatic && (!isPrimaryTriggerPulled  || !GetWeaponData().DoesSecondaryOverheat)
-		&& CurrentOverheatValue < GetWeaponData().OverheatThreshold) isCoolingDown = true;
-
-	if (GetWeaponData().isSecondaryFireAutomatic == false) hasSecondarySemiAutoFired = true;
 }
 
-void AWeapon::ReleaseSecondaryTrigger_Implementation()
+void AWeapon::ReleaseSecondaryTrigger()
 {
 	isSecondaryTriggerPulled = false;
-
-	GetWorldTimerManager().ClearTimer(SecondaryFireRateTimer);
-
-	if (CurrentOverheatValue < GetWeaponData().OverheatThreshold && (!isPrimaryTriggerPulled || !GetWeaponData().DoesSecondaryOverheat))
-	{
-		GetWorldTimerManager().SetTimer(CooldownDelayTimer, this, &AWeapon::StartCooldown, GetWeaponData().CooldownDelay);
-	}
-
-	hasSecondarySemiAutoFired = false;
 }
 
-
-void AWeapon::ChargeWeapon(EPrimaryOrSecondary PrimaryOrSecondary)
+bool AWeapon::ChargeWeapon(EPrimaryOrSecondary PrimaryOrSecondary, float TimeToCharge)
 {
-	if (isOverheated) return;
-	
+	if (isOverheated) return false;
+
+	if (PrimaryOrSecondary == Primary)
+	{
+		if (SecondaryCurrentCharge > 0) return false;
+		
+		PrimaryCurrentCharge += GetWorld()->DeltaTimeSeconds;
+        
+        if (PrimaryCurrentCharge >= TimeToCharge)
+        {
+        	PrimaryCurrentCharge = TimeToCharge;
+        	return true;
+        }
+	}
+
+	if (PrimaryOrSecondary == Secondary)
+	{
+		if (PrimaryCurrentCharge > 0) return false;
+		
+		SecondaryCurrentCharge += GetWorld()->DeltaTimeSeconds;
+        
+		if (SecondaryCurrentCharge >= TimeToCharge)
+		{
+			SecondaryCurrentCharge = TimeToCharge;
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void AWeapon::Server_ShootProjectile_Implementation(EPrimaryOrSecondary PrimaryOrSecondary, EAmmoType AmmoType, int32 AmmoCost, TSubclassOf<AProjectile> Projectile, int32 ProjectilesToSpawn, float ProjectileSpeed, 
+float Damage, float KnockbackForceMultiplier, float SpreadInDegrees, bool isAutomatic, float FireRateRPM, bool DoesOverheat)
+{
+	if (GetWorldTimerManager().IsTimerActive(FireRateTimer)) return;
+
 	switch (PrimaryOrSecondary)
 	{
-	case Primary:	
-		if (SecondaryCurrentCharge > 0) return;
-		if (!GetWeaponData().isPrimaryFireAutomatic && hasPrimarySemiAutoFired) return;
-		PrimaryCurrentCharge += GetWorld()->DeltaTimeSeconds;
-		if (PrimaryCurrentCharge > GetWeaponData().PrimaryTimeToCharge) 
-			PrimaryCurrentCharge = GetWeaponData().PrimaryTimeToCharge;
-		break;
-
-	case Secondary:	
-		if (PrimaryCurrentCharge > 0) return;
-		if (!GetWeaponData().isSecondaryFireAutomatic && hasSecondarySemiAutoFired) return;
-		SecondaryCurrentCharge += GetWorld()->DeltaTimeSeconds;
-		if (SecondaryCurrentCharge > GetWeaponData().SecondaryTimeToCharge) 
-			SecondaryCurrentCharge = GetWeaponData().SecondaryTimeToCharge;
+	case Primary:
+		if (isPrimaryTriggerPulled && !isAutomatic) return;
+	case Secondary:
+		if (isSecondaryTriggerPulled && !isAutomatic) return;
+	default:
 		break;
 	}
-}
 
-void AWeapon::ShootWeapon(TSubclassOf<AProjectile> Projectile, EAmmoType AmmoType, int32 AmmoCost, float Damage, float KnockbackForceMultiplier, int32 BurstCount,
-	int32 ShotgunPelletCount, float SpreadInDegrees, FTimerHandle& FireRateTimerHandle, float FireRateInSeconds, bool DoesOverheat)
-{
-	// For Every shotgun pellet fire a shot.
-	for (int32 i = 0; i < ShotgunPelletCount; i++)
+	for (int32 i = 0; i < ProjectilesToSpawn; i++)
 	{
-		FVector ShotStart = GetCharacterOwner()->GetFirstPersonCameraComponent()->GetComponentLocation();
-		FVector ShotTarget = GetShotTargetWithSpread(SpreadInDegrees);
-		
-		if (Projectile.GetDefaultObject() != nullptr)
-		{
-			FHitResult Hit;
-			FCollisionQueryParams IgnorePlayer;
-			IgnorePlayer.AddIgnoredActor(GetCharacterOwner()->GetUniqueID());
-			
-			GetWorld()->LineTraceSingleByChannel(Hit, ShotStart, ShotTarget, ECC_WorldDynamic, IgnorePlayer);
+		FVector CameraLocation = GetCharacterOwner()->GetFirstPersonCameraComponent()->GetComponentLocation();
+		FVector ShotStart = CameraLocation;
+		FVector ShotTarget = CameraLocation + GetCharacterOwner()->GetFirstPersonCameraComponent()->GetForwardVector() * 10000.0f;
+		ShotTarget = VectorWithSpreadFromPoints(ShotStart, ShotTarget, SpreadInDegrees);
 
-			ShotStart = MuzzleArrowComponent->GetComponentLocation();
-			// ShotTarget = Hit.bBlockingHit ? Hit.ImpactPoint : Hit.TraceEnd;
-			
-			Server_ShootProjectile(Projectile, Damage, KnockbackForceMultiplier, ShotStart, ShotTarget, GetCharacterOwner());
-		}
-		else
-		{
-			Server_ShootHitscan(Damage, KnockbackForceMultiplier, ShotStart, ShotTarget, GetCharacterOwner());
-		}
+		FHitResult Hit;
+		FCollisionQueryParams IgnorePlayer;
+		IgnorePlayer.AddIgnoredActor(GetCharacterOwner()->GetUniqueID());
+		GetWorld()->LineTraceSingleByChannel(Hit, ShotStart, ShotTarget, ECC_WorldDynamic, IgnorePlayer);
+
+		ShotTarget = Hit.bBlockingHit ? Hit.ImpactPoint : Hit.TraceEnd;
+
+		AProjectile* SpawnedProjectile = GetWorld()->SpawnActor<AProjectile>(Projectile, MuzzleArrowComponent->GetComponentLocation(), GetActorForwardVector().ToOrientationRotator());
+
+		FVector ShotDirection = Hit.TraceEnd - Hit.TraceStart;
+		ShotDirection.Normalize();
+		SpawnedProjectile->GetProjectileMovement()->Velocity = ShotDirection * ProjectileSpeed;
+		SpawnedProjectile->SetSpawner(GetCharacterOwner());
+		SpawnedProjectile->SetImpactDamage(Damage);
+		SpawnedProjectile->SetKnockbackForceMultiplier(KnockbackForceMultiplier);
 	}
-
-	// Burst Fire
-	if (BurstCount > 1)
-	{
-    	FTimerDelegate BurstDelegate;
-		BurstDelegate.BindUFunction(this, FName("ShootWeapon"),
-			Projectile, AmmoType, Damage, KnockbackForceMultiplier, BurstCount,
-			ShotgunPelletCount, SpreadInDegrees, FireRateTimerHandle, FireRateInSeconds, DoesOverheat);
-
-		CurrentBurstCount++;
-
-		if (GetWorldTimerManager().IsTimerActive(BurstTimer) == false)
-		{
-			GetWorldTimerManager().SetTimer(BurstTimer, BurstDelegate, FireRateInSeconds, true);
-		}
-		else if (CurrentBurstCount >= BurstCount)
-		{
-			GetWorldTimerManager().ClearTimer(BurstTimer);
-			CurrentBurstCount = 0;
-		}
-	}
-	else
-	{
-		GetWorldTimerManager().SetTimer(FireRateTimerHandle, FireRateInSeconds, false);
-	}
-
-	// Overheating
-	if (DoesOverheat)
-    {
-		if (GetWorldTimerManager().IsTimerActive(CooldownDelayTimer)) GetWorldTimerManager().ClearTimer(CooldownDelayTimer);
-		
-    	if (CurrentOverheatValue + FireRateInSeconds > GetWeaponData().OverheatThreshold)
-    	{
-    		CurrentOverheatValue = GetWeaponData().OverheatThreshold;
-    	}
-    	else
-    	{
-    		CurrentOverheatValue += FireRateInSeconds;
-    	}
-    	
-    	isCoolingDown = false;
-
-    	if (CurrentOverheatValue >= GetWeaponData().OverheatThreshold)
-    	{
-    		isOverheated = true;
-    		GetWorldTimerManager().SetTimer(CooldownDelayTimer, this, &AWeapon::StartCooldown, GetWeaponData().OverheatedCooldownDelay, false);
-    	}
-    }
 
 	GetCharacterOwner()->GetInventoryComponent()->RemoveAmmo(AmmoType, AmmoCost);
 	
-	GEngine->AddOnScreenDebugMessage(10, 0.2f, FColor::Orange, "Weapon Fired");
-	
+	if (FireRateRPM > 0.0f) GetWorldTimerManager().SetTimer(FireRateTimer, ConvertFireRateToSeconds(FireRateRPM), false);
 }
 
-void AWeapon::Server_ShootHitscan_Implementation(float Damage, float KnockbackForceMultiplier, FVector Start, FVector End, ACharacter* Causer)
-{
-	FCollisionQueryParams IgnorePlayer;
-	IgnorePlayer.AddIgnoredActor(Causer->GetUniqueID());
-	
-	FHitResult Hit;
-	GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_WorldDynamic, IgnorePlayer);
-	DrawDebugLineTraceSingle(GetWorld(), MuzzleArrowComponent->GetComponentLocation(), Hit.bBlockingHit ? Hit.ImpactPoint : Hit.TraceEnd, EDrawDebugTrace::ForDuration, true, FHitResult(), FColor::Red, FColor::Green, 0.2f);
+void AWeapon::Server_ShootProjectileBurst_Implementation(EPrimaryOrSecondary PrimaryOrSecondary, EAmmoType AmmoType, int32 AmmoCost, TSubclassOf<AProjectile> Projectile, int32 ProjectilesToSpawn, int32 BurstCount, float BurstDelay,
+float ProjectileSpeed, float Damage, float KnockbackForceMultiplier, float SpreadInDegrees, bool isAutomatic, float FireRateRPM, bool DoesOverheat)
+{	
+	// Server_ShootProjectile(AmmoType, AmmoCost, Projectile, ProjectilesToSpawn, ProjectileSpeed, Damage, KnockbackForceMultiplier, SpreadInDegrees, FireRateRPM, DoesOverheat);
+	// CurrentBurstCount++;
+	//
+	// if (CurrentBurstCount >= BurstCount)
+	// {
+	// 	CurrentBurstCount = 0;
+	//
+	// 	if (FireRateRPM > 0.0f) GetWorldTimerManager().SetTimer(FireRateTimer, ConvertFireRateToSeconds(FireRateRPM), false);
+	//
+	// 	return;
+	// }
+	//
+	// FTimerDelegate BurstTimerDelegate;
+	// BurstTimerDelegate.BindUFunction(this, FName("ShootProjectileBurst"), AmmoType, AmmoCost, Projectile, ProjectilesToSpawn, BurstCount, BurstDelay,
+	// 							  ProjectileSpeed, Damage, KnockbackForceMultiplier, SpreadInDegrees, true, FireRateRPM, DoesOverheat);
+	//
+	// GetWorldTimerManager().SetTimer(BurstTimer, BurstTimerDelegate, BurstDelay, false);
+}
 
-	if (Hit.GetActor() && Hit.GetActor()->Implements<UDamageInterface>())
+void AWeapon::Server_ShootHitscan_Implementation(EPrimaryOrSecondary PrimaryOrSecondary, EAmmoType AmmoType, int32 AmmoCost, int32 ProjectilesToSpawn, float Damage, float KnockbackForceMultiplier, float SpreadInDegrees,
+bool isAutomatic, float FireRateRPM, bool DoesOverheat)
+{
+	if (GetWorldTimerManager().IsTimerActive(FireRateTimer)) return;
+
+	switch (PrimaryOrSecondary)
 	{
-		GEngine->AddOnScreenDebugMessage(12, 0.2f, FColor::Purple, "Hit Actor: " + Hit.GetActor()->GetName());
-		
-		Execute_DealDamage(Hit.GetActor(), Damage, FPointDamageEvent(), Causer->GetController(), Causer);
-		Execute_AddImpulseAtLocation(Hit.GetActor(), UKismetMathLibrary::GetDirectionUnitVector(Hit.TraceStart, Hit.TraceEnd) * KnockbackForceMultiplier * Damage, Hit.ImpactPoint, NAME_None);
+	case Primary:
+		if (isPrimaryTriggerPulled && !isAutomatic) return;
+	case Secondary:
+		if (isSecondaryTriggerPulled && !isAutomatic) return;
+	default:
+		break;
 	}
 
-	// Multicast_ShootHitscan(Damage, MuzzleArrowComponent->GetComponentLocation(), Hit.bBlockingHit ? Hit.ImpactPoint : Hit.TraceEnd, Causer);
+	for (int32 i = 0; i < ProjectilesToSpawn; i++)
+	{
+		FVector CameraLocation = GetCharacterOwner()->GetFirstPersonCameraComponent()->GetComponentLocation();
+		FVector ShotStart = CameraLocation;
+		FVector ShotTarget = CameraLocation + GetCharacterOwner()->GetFirstPersonCameraComponent()->GetForwardVector() * 10000.0f;
+		ShotTarget = VectorWithSpreadFromPoints(ShotStart, ShotTarget, SpreadInDegrees);
+
+		FHitResult Hit;
+		FCollisionQueryParams IgnorePlayer;
+		IgnorePlayer.AddIgnoredActor(GetCharacterOwner()->GetUniqueID());
+		GetWorld()->LineTraceSingleByChannel(Hit, ShotStart, ShotTarget, ECC_WorldDynamic, IgnorePlayer);
+
+		if (Hit.bBlockingHit)
+		{
+			DrawDebugLine(GetWorld(), MuzzleArrowComponent->GetComponentLocation(), Hit.ImpactPoint, FColor::Green, false, 0.2f);
+		}
+		else
+		{
+			DrawDebugLine(GetWorld(), MuzzleArrowComponent->GetComponentLocation(), Hit.TraceEnd, FColor::Red, false, 0.2f);
+		}
+		
+		if (IsValid(Hit.GetActor()) == false) break;
+
+		Hit.GetActor()->TakeDamage(Damage, FPointDamageEvent(), GetCharacterOwner()->GetController(), GetCharacterOwner());
+
+		FVector HitDirection = Hit.TraceEnd - Hit.TraceStart;
+		HitDirection.Normalize();
+		
+		if (Hit.GetComponent()->GetClass() == UStaticMeshComponent::StaticClass())
+		{
+			UStaticMeshComponent* SMComponent = Cast<UStaticMeshComponent>(Hit.GetComponent());
+
+			if (SMComponent->IsSimulatingPhysics())
+			{
+				SMComponent->AddImpulseAtLocation(HitDirection * Damage * KnockbackForceMultiplier, Hit.ImpactPoint);
+			}
+		}
+		else if (Hit.Component->GetClass() == USkeletalMeshComponent::StaticClass())
+		{
+			USkeletalMeshComponent* SKMComponent = Cast<USkeletalMeshComponent>(Hit.GetComponent());
+
+			if (SKMComponent->IsSimulatingPhysics())
+			{
+				SKMComponent->AddImpulseAtLocation(HitDirection * Damage * KnockbackForceMultiplier, Hit.ImpactPoint);
+			}
+		}		
+	}
+
+	CharacterOwner->GetInventoryComponent()->RemoveAmmo(AmmoType, AmmoCost);
+
+	GetWorldTimerManager().SetTimer(FireRateTimer, ConvertFireRateToSeconds(FireRateRPM), false);
 }
 
-// void AWeapon::Multicast_ShootHitscan_Implementation(float Damage, FVector Start, FVector End, ACharacter* Causer)
-// {
-// 	FCollisionQueryParams IgnorePlayer;
-// 	IgnorePlayer.AddIgnoredActor(Causer->GetUniqueID());
-// 	
-// 	FHitResult Hit;
-// 	GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_WorldDynamic, IgnorePlayer);
-// 	DrawDebugLineTraceSingle(GetWorld(), Start, End, EDrawDebugTrace::ForDuration, true, FHitResult(), FColor::Red, FColor::Green, 0.2f);
-//
-// 	if (Hit.GetActor())
-// 	{
-// 		GEngine->AddOnScreenDebugMessage(12, 0.2f, FColor::Purple, "Hit Actor: " + Hit.GetActor()->GetName());
-// 		Hit.GetActor()->LoseHealth(Damage, FPointDamageEvent(), Causer->GetController(), Causer);
-//
-// 		// TODO: Add Physics Impacts.
-// 	}
-// }
-
-void AWeapon::Server_ShootProjectile_Implementation(TSubclassOf<AProjectile> ProjectileActor, float Damage, float KnockbackForceMultiplier, FVector Start, FVector Target, ACharacter* Causer)
+void AWeapon::Server_ShootHitscanBurst_Implementation(EPrimaryOrSecondary PrimaryOrSecondary, EAmmoType AmmoType, int32 AmmoCost, int32 ProjectilesToSpawn, int32 BurstCount, float BurstDelay,
+float Damage, float KnockbackForceMultiplier, float SpreadInDegrees, bool isAutomatic, float FireRateRPM, bool DoesOverheat)
 {
-	AProjectile* SpawnedProjectile = GetWorld()->SpawnActor<AProjectile>(ProjectileActor);
-
-	if (SpawnedProjectile == nullptr) return;
-
-	SpawnedProjectile->SetActorLocation(Start);
-	SpawnedProjectile->GetProjectileMovement()->Velocity = UKismetMathLibrary::FindLookAtRotation(Start, Target).Vector() * SpawnedProjectile->GetProjectileMovement()->InitialSpeed;
-	SpawnedProjectile->SetSpawner(Causer);
-	SpawnedProjectile->SetImpactDamage(Damage);
-	SpawnedProjectile->SetKnockbackForceMultiplier(KnockbackForceMultiplier);
-
-	// Multicast_ShootProjectile(ProjectileActor, Damage, Start, Target, Causer);
-}
-
-void AWeapon::Multicast_ShootProjectile_Implementation(TSubclassOf<AProjectile> ProjectileActor, float Damage, FVector Start, FVector Target, ACharacter* Causer)
-{
-	AProjectile* SpawnedProjectile = GetWorld()->SpawnActor<AProjectile>(ProjectileActor);
-
-	if (SpawnedProjectile == nullptr) return;
-
-	SpawnedProjectile->SetActorLocation(Start);
-	SpawnedProjectile->GetProjectileMovement()->Velocity = UKismetMathLibrary::FindLookAtRotation(Start, Target).Vector() * SpawnedProjectile->GetProjectileMovement()->InitialSpeed;
-	SpawnedProjectile->SetSpawner(Causer);
-	SpawnedProjectile->SetImpactDamage(Damage);
-	SpawnedProjectile->SetKnockbackForceMultiplier(Damage);
+	// if (GetWorldTimerManager().IsTimerActive(BurstTimer) && CurrentBurstCount > 0) return;
+	//
+	// CurrentBurstCount++;
+	//
+	// if (CurrentBurstCount >= BurstCount)
+	// {
+	// 	CurrentBurstCount = 0;
+	//
+	// 	if (FireRateRPM > 0.0f) GetWorldTimerManager().SetTimer(FireRateTimer, ConvertFireRateToSeconds(FireRateRPM), false);
+	//
+	// 	return;
+	// }
+	//
+	// FTimerDelegate BurstTimerDelegate;
+	// BurstTimerDelegate.BindUObject(this, &AWeapon::Server_ShootHitscan, AmmoType, AmmoCost, ProjectilesToSpawn, Damage, KnockbackForceMultiplier,
+	// 							   SpreadInDegrees, true, 0.0f, DoesOverheat);
+	//
+	// GetWorldTimerManager().SetTimer(BurstTimer, BurstTimerDelegate, BurstDelay, false);
 }
 
 void AWeapon::StartCooldown()
@@ -359,43 +315,21 @@ void AWeapon::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	if (isPrimaryTriggerPulled == false)
+	{
+		PrimaryCurrentCharge -= DeltaTime;
+		if (PrimaryCurrentCharge < 0) PrimaryCurrentCharge = 0;
+	}
+
+	if (isSecondaryTriggerPulled == false)
+	{
+		SecondaryCurrentCharge -= DeltaTime;
+		if (SecondaryCurrentCharge < 0) SecondaryCurrentCharge = 0;
+	}
+
 	if (isPickup)
 	{
 		SetActorRotation(GetActorRotation() + FRotator(0, 1, 0));
-	}
-
-	if (GetWeaponData().DoesPrimaryOverheat && CurrentOverheatValue <= 0)
-	{
-		CurrentOverheatValue = 0;
-		isCoolingDown = false;
-		isOverheated = false;
-	}
-	else if (GetWeaponData().DoesPrimaryOverheat && isCoolingDown)
-	{
-		CurrentOverheatValue -= DeltaTime * GetWeaponData().CooldownSpeedMultiplier;
-	}
-
-	if (GetWeaponData().DoesPrimaryOverheat)
-	{
-		GEngine->AddOnScreenDebugMessage(400, 1.0f, FColor::White, "CurrentOverheatValue: " + FString::SanitizeFloat(CurrentOverheatValue));
-	}
-
-	if (GetWeaponData().DoesPrimaryCharge && PrimaryCurrentCharge > 0.0f && !isPrimaryTriggerPulled)
-	{
-		PrimaryCurrentCharge -= DeltaTime * GetWeaponData().PrimaryDeChargeMultiplier;
-	}
-	else if (PrimaryCurrentCharge < 0.0f && !isPrimaryTriggerPulled)
-	{
-		PrimaryCurrentCharge = 0.0f;
-	}
-
-	if (GetWeaponData().DoesSecondaryCharge && SecondaryCurrentCharge > 0.0f && !isSecondaryTriggerPulled)
-	{
-		SecondaryCurrentCharge -= DeltaTime * GetWeaponData().SecondaryDeChargeMultiplier;
-	}
-	else if (SecondaryCurrentCharge < 0.0f && !isSecondaryTriggerPulled)
-	{
-		SecondaryCurrentCharge = 0.0f;
 	}
 
 	FString PrimaryString = "isPrimaryTriggerPulled: ";
@@ -420,59 +354,48 @@ APlayerCharacter* AWeapon::GetCharacterOwner()
 	return CharacterOwner ? CharacterOwner : Cast<APlayerCharacter>(GetParentActor());
 }
 
-FWeaponData AWeapon::GetWeaponData()
-{
-	if (WeaponDataTable.IsNull())
-	{
-		UE_LOG(LogTemp, Error, TEXT("Weapon: %s has null WeaponData."), *this->GetName());
-		return FWeaponData();
-	}
-	
-	return *WeaponDataTable.GetRow<FWeaponData>("");
-}
+// float AWeapon::GetFireRateInSeconds(EPrimaryOrSecondary PrimaryOrSecondary)
+// {
+// 	switch (PrimaryOrSecondary)
+// 	{
+// 	case Primary:
+// 		return ConvertFireRateToSeconds(GetWeaponData().PrimaryFireRate);
+//
+// 	case Secondary:
+// 		return ConvertFireRateToSeconds(GetWeaponData().SecondaryFireRate);
+//
+// 	default:
+// 		return 0.0f;
+// 	}
+// }
 
-float AWeapon::GetFireRateInSeconds(EPrimaryOrSecondary PrimaryOrSecondary)
-{
-	switch (PrimaryOrSecondary)
-	{
-	case Primary:
-		return ConvertFireRateToSeconds(GetWeaponData().PrimaryFireRate);
+// float AWeapon::GetCurrentCharge(EPrimaryOrSecondary PrimaryOrSecondary)
+// {
+// 	switch (PrimaryOrSecondary)
+// 	{
+// 	case Primary:
+// 		return PrimaryCurrentCharge;
+//
+// 	case Secondary:
+// 		return SecondaryCurrentCharge;
+//
+// 	default:
+// 		return 0.0f;
+// 	}
+// }
 
-	case Secondary:
-		return ConvertFireRateToSeconds(GetWeaponData().SecondaryFireRate);
-
-	default:
-		return 0.0f;
-	}
-}
-
-float AWeapon::GetCurrentCharge(EPrimaryOrSecondary PrimaryOrSecondary)
-{
-	switch (PrimaryOrSecondary)
-	{
-	case Primary:
-		return PrimaryCurrentCharge;
-
-	case Secondary:
-		return SecondaryCurrentCharge;
-
-	default:
-		return 0.0f;
-	}
-}
-
-float AWeapon::GetMaxCharge(EPrimaryOrSecondary PrimaryOrSecondary)
-{
-	switch (PrimaryOrSecondary)
-	{
-	case Primary:
-		return GetWeaponData().PrimaryTimeToCharge;
-
-	case Secondary:
-		return GetWeaponData().SecondaryTimeToCharge;
-
-	default:
-		return 0.0f;
-	}
-}
+// float AWeapon::GetMaxCharge(EPrimaryOrSecondary PrimaryOrSecondary)
+// {
+// 	switch (PrimaryOrSecondary)
+// 	{
+// 	case Primary:
+// 		return GetWeaponData().PrimaryTimeToCharge;
+//
+// 	case Secondary:
+// 		return GetWeaponData().SecondaryTimeToCharge;
+//
+// 	default:
+// 		return 0.0f;
+// 	}
+// }
 

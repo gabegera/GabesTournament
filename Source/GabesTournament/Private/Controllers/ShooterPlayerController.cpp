@@ -20,10 +20,10 @@ void AShooterPlayerController::SetupPlayerInputComponent(UInputComponent* Player
 	Input->BindAction(Input_Jump, ETriggerEvent::Triggered, this, &AShooterPlayerController::Jump);
 	Input->BindAction(Input_Dash, ETriggerEvent::Triggered, this, &AShooterPlayerController::Dash);
 	
-	Input->BindAction(Input_Fire, ETriggerEvent::Triggered, this, &AShooterPlayerController::UseWeapon);
-	Input->BindAction(Input_ReleaseFire, ETriggerEvent::Triggered, this, &AShooterPlayerController::UseWeaponReleased);
-	Input->BindAction(Input_SecondaryFire, ETriggerEvent::Triggered, this, &AShooterPlayerController::UseWeaponSecondary);
-	Input->BindAction(Input_ReleaseSecondaryFire, ETriggerEvent::Triggered, this, &AShooterPlayerController::UseWeaponSecondaryReleased);
+	Input->BindAction(Input_Fire, ETriggerEvent::Triggered, this, &AShooterPlayerController::Fire);
+	Input->BindAction(Input_ReleaseFire, ETriggerEvent::Triggered, this, &AShooterPlayerController::ReleaseFire);
+	Input->BindAction(Input_SecondaryFire, ETriggerEvent::Triggered, this, &AShooterPlayerController::SecondaryFire);
+	Input->BindAction(Input_ReleaseSecondaryFire, ETriggerEvent::Triggered, this, &AShooterPlayerController::ReleaseSecondaryFire);
 	
 	Input->BindAction(Input_SwapWeapons, ETriggerEvent::Triggered, this, &AShooterPlayerController::SwapWeapons);
 	Input->BindAction(Input_EquipSlot1, ETriggerEvent::Triggered, this, &AShooterPlayerController::EquipSlot1);
@@ -130,24 +130,32 @@ void AShooterPlayerController::Dash(const FInputActionInstance& Instance)
 	
 }
 
-void AShooterPlayerController::UseWeapon()
+void AShooterPlayerController::Fire()
 {
-	Execute_Fire(GetPlayerCharacter()->GetWeaponChildActorComponent()->GetChildActor());	
+	if (!GetEquippedWeapon()) return;
+	
+	GetEquippedWeapon()->PullPrimaryTrigger();
 }
 
-void AShooterPlayerController::UseWeaponReleased()
+void AShooterPlayerController::ReleaseFire()
 {
-	Execute_ReleasePrimaryTrigger(GetPlayerCharacter()->GetWeaponChildActorComponent()->GetChildActor());
+	if (!GetEquippedWeapon()) return;
+	
+	GetEquippedWeapon()->ReleasePrimaryTrigger();
 }
 
-void AShooterPlayerController::UseWeaponSecondary()
+void AShooterPlayerController::SecondaryFire()
 {
-	Execute_SecondaryFire(GetPlayerCharacter()->GetWeaponChildActorComponent()->GetChildActor());
+	if (!GetEquippedWeapon()) return;
+
+	GetEquippedWeapon()->PullSecondaryTrigger();
 }
 
-void AShooterPlayerController::UseWeaponSecondaryReleased()
+void AShooterPlayerController::ReleaseSecondaryFire()
 {
-	Execute_ReleaseSecondaryTrigger(GetPlayerCharacter()->GetWeaponChildActorComponent()->GetChildActor());
+	if (!GetEquippedWeapon()) return;
+	
+	GetEquippedWeapon()->ReleaseSecondaryTrigger();
 }
 
 
